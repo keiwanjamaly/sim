@@ -52,13 +52,6 @@ class Flow():
         N = self.__N_Flavor
         return - k**3 / (2*np.pi*self.e_b(k, ux)*N) * (1+self.n_b(beta * self.e_b(k, ux)))
 
-    def Q_prime(self, t, ux):
-        k = self.k(t)
-        beta = self.__beta
-        e = self.e_b(k, ux)
-        N = self.__N_Flavor
-        return k**3 * csch(beta*e/2) * (beta * e * csch(beta*e/2) + 1) / (8 * N * np.pi * e**3)
-
     def f(self, t, u):
         self.__print_counter += 1
         if self.__print_counter % 300 == 0:
@@ -69,26 +62,6 @@ class Flow():
         else:
             u_x = np.ediff1d(u, to_begin=u[1], to_end=u[-1]-u[-2]) / self.__dx
             return (self.Q(t, u_x[1:]) - self.Q(t, u_x[:-1]))/self.__dx + self.S(t, self.__grid)
-
-    def J(self, t, u):
-        jac_dense = np.zeros((3, self.__grid.shape[0]))
-
-        if not self.__mean_field_flag:
-            u_x = np.ediff1d(u, to_begin=u[1], to_end=u[-1]-u[-2]) / self.__dx
-
-            # set diagonal elements
-            jac_dense[1, 1:-1] = - \
-                (self.Q_prime(t, u_x[2:-1]) + self.Q_prime(t, u_x[1:-2]))
-
-            # set lower row elements
-            jac_dense[2, 0:-2] = self.Q_prime(t, u_x[2:-1])
-
-            # set upper row elements
-            jac_dense[0, 2:] = self.Q_prime(t, u_x[1:-2])
-
-            jac_dense *= self.__dx**2
-
-        return jac_dense
 
     def compute(self):
         self.__solution = solve_ivp(
