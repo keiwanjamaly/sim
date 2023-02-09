@@ -66,8 +66,10 @@ class Flow():
             return (self.Q(t, u_x[1:]) - self.Q(t, u_x[:-1]))/self.__dx + self.S(t, self.__grid)
 
     def compute(self):
+        tir = self.t(self.__kir)
+
         self.__solution = solve_ivp(
-            self.f, [0, self.t(self.__kir)], self.__u_init, lband=1, uband=1, method="LSODA", rtol=1e-10, atol=1e-10)
+            self.f, [0, tir], self.__u_init, lband=1, uband=1, method="LSODA", rtol=1e-10, atol=1e-10)
 
     def k(self, t):
         return self.__Lambda * np.exp(-t)
@@ -81,9 +83,11 @@ class Flow():
     def e_b(self, k, u_x):
         return np.sqrt(k**2 + u_x)
 
+    @np.errstate(over="ignore")
     def n_f(self, x):
         return 1/(np.exp(x) + 1)
 
+    @np.errstate(over="ignore")
     def n_b(self, x):
         return 1/(np.exp(x) - 1)
 
