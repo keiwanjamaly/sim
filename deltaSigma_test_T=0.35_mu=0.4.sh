@@ -34,5 +34,6 @@ for i in "${nums[@]}"; do
     # echo "$i"
     grid=$(echo "$SigmaMax/$i" | bc)
     # echo $grid
-    python3 Flow.py -N $N -L $Lambda -kir $Kir -sigmaMax $SigmaMax -grid $grid -mu $mu -T $T -o spatial_resolution_test/T=${T}_mu=$mu
+    sbatch execute_flow.sh $N $Lambda $Kir $SigmaMax $grid $mu $T spatial_resolution_test
+
 done

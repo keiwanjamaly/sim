@@ -1,20 +1,21 @@
 import numpy as np
 import numpy.typing as npt
 from scipy.integrate import solve_ivp, trapezoid
-import matplotlib.pyplot as plt
-from numba import njit
+# from numba import njit
 import pandas as pd
 import h5py
 import os
 import argparse
 
 
-@njit
+# @njit
+@np.errstate(over="ignore")
 def sech(x):
     return 1/np.cosh(x)
 
 
-@njit
+# @njit
+@np.errstate(over="ignore")
 def csch(x):
     return 1/np.sinh(x)
 
@@ -182,7 +183,7 @@ def main():
     args = parser.parse_args()
     Lambda = args.L
     kir = args.kir
-    n_flavor = args.N
+    n_flavor = args.N if args.N != -1 else np.Inf
     sigma_max = args.sigmaMax
     mu = args.mu
     T = args.T

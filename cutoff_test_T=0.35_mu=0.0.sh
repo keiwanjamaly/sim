@@ -110,5 +110,5 @@ nums=(
     10000000.0
 )
 for Lambda in "${nums[@]}"; do
-    python3 Flow.py -N $N -L $Lambda -kir $Kir -sigmaMax $SigmaMax -grid $grid -mu $mu -T $T -o cutoff_test/T=${T}_mu=$mu
+    sbatch execute_flow.sh $N $Lambda $Kir $SigmaMax $grid $mu $T cutoff_test
 done

@@ -1,13 +1,10 @@
 #!/bin/bash
 
-Lambda=100000
 Kir=0.0001
-T=0.35
-mu=0.4
-N=2
+N=-1
 SigmaMax=6.0
 grid=1000
-nums=(
+Lambdas=(
     1.0
     1.1768119524349985
     1.384886371393873
@@ -109,6 +106,14 @@ nums=(
     8497534.359086439
     10000000.0
 )
-for Lambda in "${nums[@]}"; do
+
+for Lambda in "${Lambda[@]}"; do
+    for ((x=1;x<=100;x++)); do
+        for ((x=1;x<=100;x++)); do
+        z=`echo "var=$i.;var/=2;var" | bc -l`
+        grid=`echo "var=$z;var/=$deltaSigma;var" | bc`
+        sbatch execute_flow.sh $N $Lambda $Kir $z $grid $mu $T mean_field
+        done
+    done
     sbatch execute_flow.sh $N $Lambda $Kir $SigmaMax $grid $mu $T cutoff_test
 done
