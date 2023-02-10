@@ -9,4 +9,4 @@
 
 eval "$(conda shell.bash hook)"
 conda activate flow-master
-python3 Flow.py -N $1 -L $2 -kir $3 -sigmaMax $4 -grid $5 -mu $6 -T $7 -o $8/T=${7}_mu=$6
+python3 Flow.py -N $1 -L $2 -kir $3 -sigmaMax $4 -grid $5 -mu $6 -T $7 -o $8

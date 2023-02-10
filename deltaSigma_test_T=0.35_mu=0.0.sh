@@ -34,6 +34,6 @@ for i in "${nums[@]}"; do
     # echo "$i"
     grid=$(echo "$SigmaMax/$i" | bc)
     # echo $grid
-    sbatch execute_flow.sh $N $Lambda $Kir $SigmaMax $grid $mu $T spatial_resolution_test
+    sbatch execute_flow.sh $N $Lambda $Kir $SigmaMax $grid $mu $T spatial_resolution_test/T=${T}_mu=$mu
     
 done

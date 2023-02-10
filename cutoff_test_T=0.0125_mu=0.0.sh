@@ -110,5 +110,5 @@ nums=(
     10000000.0
 )
 for Lambda in "${nums[@]}"; do
-    sbatch execute_flow.sh $N $Lambda $Kir $SigmaMax $grid $mu $T cutoff_test
+    sbatch execute_flow.sh $N $Lambda $Kir $SigmaMax $grid $mu $T cutoff_test/T=${T}_mu=$mu
 done

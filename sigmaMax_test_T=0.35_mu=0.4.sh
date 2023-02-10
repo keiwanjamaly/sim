@@ -10,5 +10,5 @@ deltaSigma=0.006
 for ((i=2;i<=26;i++)); do
     z=`echo "var=$i.;var/=2;var" | bc -l`
     grid=`echo "var=$z;var/=$deltaSigma;var" | bc`
-    sbatch execute_flow.sh $N $Lambda $Kir $z $grid $mu $T spatial_domain_test
+    sbatch execute_flow.sh $N $Lambda $Kir $z $grid $mu $T spatial_domain_test/T=${T}_mu=$mu
 done
