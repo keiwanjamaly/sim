@@ -1,20 +1,17 @@
 import numpy as np
 import numpy.typing as npt
 from scipy.integrate import solve_ivp, trapezoid
-# from numba import njit
 import pandas as pd
 import h5py
 import os
 import argparse
 
 
-# @njit
 @np.errstate(over="ignore")
 def sech(x):
     return 1/np.cosh(x)
 
 
-# @njit
 @np.errstate(over="ignore")
 def csch(x):
     return 1/np.sinh(x)
@@ -101,7 +98,11 @@ class Flow():
         current_root_value = 0
         y = self.__solution.y[:, j]
         grid = self.__grid
-        massSquare = (y[1] - y[0])/(grid[1] - grid[0])
+        massSquare = (y[1] - y[0])/self.__dx
+
+        # calculate third derivative at sigma = 0
+        third_div = (y[2] - 2*y[1])/self.__dx**3
+        first_div = massSquare
 
         for i in range(1, len(y)-1):
             # find bracketed root
@@ -122,12 +123,13 @@ class Flow():
                     current_root = test_root
                     massSquare = (y[i+1] - y[i])/(grid[i+1] - grid[i])
 
-        return {"sigma": current_root, "massSquare": massSquare, "pressure": - current_root_value, "t": t, "k": self.k(t), "y": y}
+        return {"sigma": current_root, "massSquare": massSquare, "first_div": first_div, "third_div": third_div, "pressure": - current_root_value, "t": t, "k": self.k(t), "y": y}
 
     def get_observables_for_all_positions(self):
-        observable_array = [self.get_observables_at_pos(
-            i) for i in range(len(self.__solution.t))]
-        return pd.DataFrame(observable_array)
+        self.observable_array = pd.DataFrame([self.get_observables_at_pos(
+            i) for i in range(len(self.__solution.t))])
+
+        return self.observable_array
 
     def save(self, path):
         # create folder, if it doesn't exist
@@ -139,7 +141,7 @@ class Flow():
         path_and_filename = os.path.join(path, filename)
 
         # compute observables
-        observables = self.get_observables_for_all_positions()
+        observables = self.observable_array
 
         with h5py.File(path_and_filename, "w") as f:
             f.attrs["sigmaMax"] = self.__grid[-1]
@@ -152,6 +154,8 @@ class Flow():
             f.create_dataset("t", data=observables["t"])
             f.create_dataset("sigma", data=observables["sigma"])
             f.create_dataset("massSquare", data=observables["massSquare"])
+            f.create_dataset("first_div", data=observables["first_div"])
+            f.create_dataset("third_div", data=observables["third_div"])
             f.create_dataset("pressure", data=observables["pressure"])
             f.create_dataset("k", data=observables["k"])
             f.create_dataset("grid", data=self.__grid)
@@ -195,7 +199,9 @@ def main():
     # flow = Flow(1e5, 1e-4, 6, 1000, 0.4, 0.0125, 2)
 
     flow.compute()
-    flow.save(path)
+    flow.get_observables_for_all_positions()
+    if not (path is None):
+        flow.save(path)
 
 
 if __name__ == "__main__":

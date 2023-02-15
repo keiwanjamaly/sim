@@ -1,0 +1,26 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Flow",
+            "type": "python",
+            "request": "launch",
+            "program": "Flow.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "-N=-1",
+                "-L=10",
+                "-kir=0.0001",
+                "-sigmaMax=6",
+                "-grid=1000",
+                "-mu=0.008",
+                "-T=0.106",
+                "-o=test"
+            ]
+        }
+    ]
+}
