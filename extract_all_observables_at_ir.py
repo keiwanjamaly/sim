@@ -2,8 +2,8 @@ import glob
 import h5py
 import numpy as np
 
-files = glob.glob("./mean_field_test/Lambda=10/*")
-outfile = "./mean_field_test/Lambda=10.hdf5"
+files = glob.glob("./mean_field_test/Lambda=1/*")
+outfile = "./mean_field_test/Lambda=1.hdf5"
 mu = np.empty(len(files))
 T = np.empty(len(files))
 sigma = np.empty(len(files))
