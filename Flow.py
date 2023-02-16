@@ -158,12 +158,12 @@ class Flow():
             f.create_dataset("third_div", data=observables["third_div"])
             f.create_dataset("pressure", data=observables["pressure"])
             f.create_dataset("k", data=observables["k"])
-            f.create_dataset("grid", data=self.__grid)
-            y_dset = f.create_dataset("y", (observables["y"].to_numpy().shape[0], len(
-                self.__grid)))
+            # f.create_dataset("grid", data=self.__grid)
+            # y_dset = f.create_dataset("y", (observables["y"].to_numpy().shape[0], len(
+            #     self.__grid)))
 
-            for i, elem in enumerate(observables["y"].to_numpy()):
-                y_dset[i, :] = elem[:]
+            # for i, elem in enumerate(observables["y"].to_numpy()):
+            #     y_dset[i, :] = elem[:]
 
 
 def main():
