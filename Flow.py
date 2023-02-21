@@ -18,7 +18,7 @@ def csch(x):
 
 
 class Flow():
-    def __init__(self, Lambda, kir, sigma_max, n_grid, mu, T, N_Flavor=np.Inf) -> None:
+    def __init__(self, Lambda, kir, sigma_max, n_grid, mu, T, N_Flavor=np.Inf, save_flow_flag=False) -> None:
         self.__Lambda = Lambda
         self.__kir = kir
         self.__grid = np.linspace(0, sigma_max, n_grid)
@@ -29,6 +29,8 @@ class Flow():
         self.__beta = 1/T
         self.__N_Flavor = N_Flavor
         self.__mean_field_flag = np.isinf(N_Flavor)
+
+        self.__save_flow_flag = save_flow_flag
 
         self.__print_counter = 0
 
@@ -158,12 +160,14 @@ class Flow():
             f.create_dataset("third_div", data=observables["third_div"])
             f.create_dataset("pressure", data=observables["pressure"])
             f.create_dataset("k", data=observables["k"])
-            # f.create_dataset("grid", data=self.__grid)
-            # y_dset = f.create_dataset("y", (observables["y"].to_numpy().shape[0], len(
-            #     self.__grid)))
 
-            # for i, elem in enumerate(observables["y"].to_numpy()):
-            #     y_dset[i, :] = elem[:]
+            if self.__save_flow_flag:
+                f.create_dataset("grid", data=self.__grid)
+                y_dset = f.create_dataset("y", (observables["y"].to_numpy().shape[0], len(
+                    self.__grid)))
+
+                for i, elem in enumerate(observables["y"].to_numpy()):
+                    y_dset[i, :] = elem[:]
 
 
 def main():
