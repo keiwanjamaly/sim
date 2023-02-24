@@ -7,7 +7,7 @@ kir = 1e-4
 
 tir = - np.log(kir/Lambda)
 
-n = 10
+# n = 10
 
 positions_k = np.array([0.4, 0.3, 0.2, 0.1, 0.05, 0.03, 0.01, 0.003])
 positions = - np.log(positions_k/Lambda)
@@ -18,9 +18,9 @@ files = glob.glob("./phase_diagram/*")
 outfile = "./phase_diagram=2.hdf5"
 mu = np.empty(len(files))
 T = np.empty(len(files))
-sigma = np.empty((n, len(files)))
-firstDiv = np.empty((n, len(files)))
-thirdDiv = np.empty((n, len(files)))
+sigma = np.empty((len(positions), len(files)))
+firstDiv = np.empty((len(positions), len(files)))
+thirdDiv = np.empty((len(positions), len(files)))
 
 
 def find_interval(t_test, f, starting_index=0):
@@ -55,7 +55,7 @@ for i, filename in enumerate(files):
 def calculate_boundary(mu_b, T_b, sigma_b):
     mu_unique = np.sort(np.unique(mu_b))
     T_unique = np.sort(np.unique(T_b))
-    X, Y = np.meshgrid(mu_unique, T_unique)
+    X, Y = np.meshgrid(mu_unique, T_unique, indexing="ij")
     sigma_grid = np.empty((len(mu_unique), len(T_unique)))
 
     for mu_i in range(len(mu_unique)):

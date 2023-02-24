@@ -4,7 +4,6 @@ from scipy.integrate import solve_ivp, trapezoid
 import pandas as pd
 import h5py
 import os
-import argparse
 
 
 @np.errstate(over="ignore")
@@ -19,63 +18,96 @@ def csch(x):
 
 class Flow():
     def __init__(self, Lambda, kir, sigma_max, n_grid, mu, T, N_Flavor=np.Inf, save_flow_flag=False) -> None:
-        self.__Lambda = Lambda
-        self.__kir = kir
-        self.__grid = np.linspace(0, sigma_max, n_grid)
-        self.__dx = self.__grid[1] - self.__grid[0]
-        self.__u_init = self.initial_condition()
-        self.__mu = mu
-        self.__T = T
-        self.__beta = 1/T
-        self.__N_Flavor = N_Flavor
-        self.__mean_field_flag = np.isinf(N_Flavor)
+        self.Lambda = Lambda
+        self.kir = kir
+        self.grid = np.linspace(0, sigma_max, n_grid)
+        self.dx = self.grid[1] - self.grid[0]
+        self.spatial_dimension = 2
+        self.u_init = self.initial_condition()
+        self.mu = mu
+        self.T = T
+        self.beta = 1/T
+        self.N_Flavor = N_Flavor
+        self.mean_field_flag = np.isinf(N_Flavor)
 
-        self.__save_flow_flag = save_flow_flag
-
-        self.__print_counter = 0
+        self.save_flow_flag = save_flow_flag
+        self.print_counter = 0
 
     def initial_condition(self) -> npt.NDArray[np.float64]:
-        intermediate = 1/np.sqrt(1+(1/self.__Lambda)**2)
-        return (self.__grid/np.pi)*(np.arctanh(intermediate) - intermediate)
+        match self.spatial_dimension:
+            case 1:
+                # for (1+1)
+                intermediate = 1/np.sqrt(1+(1/self.Lambda)**2)
+                return (self.grid/np.pi)*(np.arctanh(intermediate) - intermediate)
+            case 2:
+                # for (2+1)
+                intermediate = (2+self.Lambda**2 - 2*np.sqrt(1+self.Lambda**2)
+                                ) / (2*np.pi*np.sqrt(1+self.Lambda**2))
+                return intermediate*self.grid
 
     def S(self, t, sigma):
         k = self.k(t)
         e = self.e_f(k, sigma)
-        mu = self.__mu
-        beta = self.__beta
+        mu = self.mu
+        beta = self.beta
         minus = beta * (e-mu) / 2
         plus = beta * (e+mu) / 2
-        return sigma*k**3/(4*e**3*np.pi) * (e * beta * (sech(minus)**2 + sech(plus)**2)
-                                            - 2*(np.tanh(minus) + np.tanh(plus)))
+
+        match self.spatial_dimension:
+            case 1:
+                # for (1+1)
+                return sigma*k**3/(4*e**3*np.pi) * (e * beta * (sech(minus)**2 + sech(plus)**2)
+                                                    - 2*(np.tanh(minus) + np.tanh(plus)))
+            case 2:
+                # for (2+1)
+                return sigma*k**4/(8*e**3*np.pi) * (e * beta * (sech(minus)**2 + sech(plus)**2)
+                                                    - 2*(np.tanh(minus) + np.tanh(plus)))
 
     def Q(self, t, ux):
         k = self.k(t)
-        beta = self.__beta
-        N = self.__N_Flavor
-        return - k**3 / (2*np.pi*self.e_b(k, ux)*N) * (1+2*self.n_b(beta * self.e_b(k, ux)))
+        beta = self.beta
+        N = self.N_Flavor
+
+        match self.spatial_dimension:
+            case 1:
+                # for (1+1)
+                return - k**3 / (2*np.pi*self.e_b(k, ux)*N) * (1+2*self.n_b(beta * self.e_b(k, ux)))
+            case 2:
+                # for (2+1)
+                return - k**4 / (4*np.pi*2*self.e_b(k, ux)*N) * (1+2*self.n_b(beta * self.e_b(k, ux)))
 
     def f(self, t, u):
-        self.__print_counter += 1
-        if self.__print_counter % 300 == 0:
-            print(t, "/", self.t(self.__kir))
-
-        if self.__mean_field_flag:
-            return self.S(t, self.__grid)
+        if self.mean_field_flag:
+            diffusion = np.zeros_like(self.grid)
         else:
-            u_x = np.ediff1d(u, to_begin=u[1], to_end=u[-1]-u[-2]) / self.__dx
-            return (self.Q(t, u_x[1:]) - self.Q(t, u_x[:-1]))/self.__dx + self.S(t, self.__grid)
+            u_x = np.ediff1d(u, to_begin=u[1], to_end=u[-1]-u[-2]) / self.dx
+            Q_cal = self.Q(t, u_x)
+            diffusion = np.ediff1d(Q_cal)/self.dx
+
+        self.print_counter += 1
+        if self.print_counter > 0:
+            print_string = f'{t:.7f} ({self.k(t):.5e})/{self.t(self.kir):.2f}'
+            self.print_counter -= 1000
+            print(print_string)
+
+        return diffusion + self.S(t, self.grid)
 
     def compute(self):
-        tir = self.t(self.__kir)
+        tir = self.t(self.kir)
+        t_eval_points = np.linspace(0, tir, 1000)
 
-        self.__solution = solve_ivp(
-            self.f, [0, tir], self.__u_init, lband=1, uband=1, method="LSODA", rtol=1e-10, atol=1e-10)
+        self.solution = solve_ivp(
+            self.f, [0, tir], self.u_init, lband=1, uband=1, method="LSODA", rtol=1e-12, atol=1e-12, t_eval=t_eval_points)
+
+        if self.solution.status != 0:
+            raise RuntimeError(
+                f'Incomplete flow for mu={self.mu}, T={self.T}, sigmaMax={self.grid[-1]}, Lambda={self.Lambda}, N={len(self.grid)}')
 
     def k(self, t):
-        return self.__Lambda * np.exp(-t)
+        return self.Lambda * np.exp(-t)
 
     def t(self, k):
-        return - np.log(k/self.__Lambda)
+        return - np.log(k/self.Lambda)
 
     def e_f(self, k, sigma):
         return np.sqrt(k**2 + sigma**2)
@@ -92,18 +124,18 @@ class Flow():
         return 1/(np.exp(x) - 1)
 
     def get_grid(self):
-        return self.__grid
+        return self.grid
 
     def get_observables_at_pos(self, j):
-        t = self.__solution.t[j]
+        t = self.solution.t[j]
         current_root = 0
         current_root_value = 0
-        y = self.__solution.y[:, j]
-        grid = self.__grid
-        massSquare = (y[1] - y[0])/self.__dx
+        y = self.solution.y[:, j]
+        grid = self.grid
+        massSquare = (y[1] - y[0])/self.dx
 
         # calculate third derivative at sigma = 0
-        third_div = (y[2] - 2*y[1])/self.__dx**3
+        third_div = (y[2] - 2*y[1])/self.dx**3
         first_div = massSquare
 
         for i in range(1, len(y)-1):
@@ -123,13 +155,14 @@ class Flow():
                 if current_root_value > testPotential:
                     current_root_value = testPotential
                     current_root = test_root
-                    massSquare = (y[i+1] - y[i])/(grid[i+1] - grid[i])
+                    # TODO: remember that you have coosen a different mass square
+                    massSquare = (y[i+2] - y[i+1])/(grid[i+2] - grid[i+1])
 
         return {"sigma": current_root, "massSquare": massSquare, "first_div": first_div, "third_div": third_div, "pressure": - current_root_value, "t": t, "k": self.k(t), "y": y}
 
     def get_observables_for_all_positions(self):
         self.observable_array = pd.DataFrame([self.get_observables_at_pos(
-            i) for i in range(len(self.__solution.t))])
+            i) for i in range(len(self.solution.t))])
 
         return self.observable_array
 
@@ -139,20 +172,20 @@ class Flow():
             os.makedirs(path)
 
         # generate filenames
-        filename = f'mu={self.__mu}_T={self.__T}_sigmaMax={self.__grid[-1]}_Lambda={self.__Lambda}_kir={self.__kir}_nGrid={len(self.__grid)}_nFlavor={self.__N_Flavor}.hdf5'
+        filename = f'mu={self.mu}_T={self.T}_sigmaMax={self.grid[-1]}_Lambda={self.Lambda}_kir={self.kir}_nGrid={len(self.grid)}_nFlavor={self.N_Flavor}.hdf5'
         path_and_filename = os.path.join(path, filename)
 
         # compute observables
         observables = self.observable_array
 
         with h5py.File(path_and_filename, "w") as f:
-            f.attrs["sigmaMax"] = self.__grid[-1]
-            f.attrs["NFlavor"] = self.__N_Flavor
-            f.attrs["Lambda"] = self.__Lambda
-            f.attrs["kir"] = self.__kir
-            f.attrs["NGrid"] = len(self.__grid)
-            f.attrs["mu"] = self.__mu
-            f.attrs["T"] = self.__T
+            f.attrs["sigmaMax"] = self.grid[-1]
+            f.attrs["NFlavor"] = self.N_Flavor
+            f.attrs["Lambda"] = self.Lambda
+            f.attrs["kir"] = self.kir
+            f.attrs["NGrid"] = len(self.grid)
+            f.attrs["mu"] = self.mu
+            f.attrs["T"] = self.T
             f.create_dataset("t", data=observables["t"])
             f.create_dataset("sigma", data=observables["sigma"])
             f.create_dataset("massSquare", data=observables["massSquare"])
@@ -161,46 +194,27 @@ class Flow():
             f.create_dataset("pressure", data=observables["pressure"])
             f.create_dataset("k", data=observables["k"])
 
-            if self.__save_flow_flag:
-                f.create_dataset("grid", data=self.__grid)
+            if self.save_flow_flag:
+                f.create_dataset("grid", data=self.grid)
                 y_dset = f.create_dataset("y", (observables["y"].to_numpy().shape[0], len(
-                    self.__grid)))
+                    self.grid)))
 
                 for i, elem in enumerate(observables["y"].to_numpy()):
                     y_dset[i, :] = elem[:]
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-N", type=int,
-                        help="flavor number")
-    parser.add_argument("-L", type=float,
-                        help="ultra-violet cutoff")
-    parser.add_argument("-kir", type=float,
-                        help="infrared cutoff")
-    parser.add_argument("-sigmaMax", type=float,
-                        help="maximum of spatial computation domain")
-    parser.add_argument("-grid", type=int,
-                        help="number of grid points")
-    parser.add_argument("-mu", type=float,
-                        help="chemical potential")
-    parser.add_argument("-T", type=float,
-                        help="Temperature")
-    parser.add_argument("-o", type=str,
-                        help="output file path")
-    args = parser.parse_args()
-    Lambda = args.L
-    kir = args.kir
-    n_flavor = args.N if args.N != -1 else np.Inf
-    sigma_max = args.sigmaMax
-    mu = args.mu
-    T = args.T
-    n_grid = args.grid
+    Lambda = 1000
+    kir = 1e-3
+    n_flavor = 20
+    # n_flavor = np.Inf
+    sigma_max = 6.0
+    mu = 0.4
+    T = 0.0125
+    n_grid = 1000
+    path = './'
 
-    path = args.o
-
-    flow = Flow(Lambda, kir, sigma_max, n_grid, mu, T, n_flavor)
-    # flow = Flow(1e5, 1e-4, 6, 1000, 0.4, 0.0125, 2)
+    flow = Flow(Lambda, kir, sigma_max, n_grid, mu, T, n_flavor, True)
 
     flow.compute()
     flow.get_observables_for_all_positions()
