@@ -4,6 +4,7 @@ from scipy.integrate import solve_ivp, trapezoid
 import pandas as pd
 import h5py
 import os
+import time
 
 
 @np.errstate(over="ignore")
@@ -17,11 +18,11 @@ def csch(x):
 
 
 class Flow():
-    def __init__(self, Lambda, kir, sigma_max, n_grid, mu, T, N_Flavor=np.Inf, save_flow_flag=False) -> None:
+    def __init__(self, Lambda, kir, sigma_max, n_grid, mu, T, N_Flavor=np.Inf, save_flow_flag=False, console_logging=False, number_of_observables=None, tolerance=1e-12) -> None:
         self.Lambda = Lambda
         self.kir = kir
-        self.grid = np.linspace(0, sigma_max, n_grid)
-        self.dx = self.grid[1] - self.grid[0]
+        self.grid, self.dx = np.linspace(0,
+                                         sigma_max, n_grid, retstep=True)
         self.spatial_dimension = 2
         self.u_init = self.initial_condition()
         self.mu = mu
@@ -31,7 +32,10 @@ class Flow():
         self.mean_field_flag = np.isinf(N_Flavor)
 
         self.save_flow_flag = save_flow_flag
+        self.console_logging_flag = console_logging
         self.print_counter = 0
+        self.number_of_observables = number_of_observables
+        self.tolerance = tolerance
 
     def initial_condition(self) -> npt.NDArray[np.float64]:
         match self.spatial_dimension:
@@ -45,8 +49,7 @@ class Flow():
                                 ) / (2*np.pi*np.sqrt(1+self.Lambda**2))
                 return intermediate*self.grid
 
-    def S(self, t, sigma):
-        k = self.k(t)
+    def S(self, k, sigma):
         e = self.e_f(k, sigma)
         mu = self.mu
         beta = self.beta
@@ -63,41 +66,53 @@ class Flow():
                 return sigma*k**4/(8*e**3*np.pi) * (e * beta * (sech(minus)**2 + sech(plus)**2)
                                                     - 2*(np.tanh(minus) + np.tanh(plus)))
 
-    def Q(self, t, ux):
-        k = self.k(t)
+    def Q(self, k, ux):
         beta = self.beta
         N = self.N_Flavor
+        e = self.e_b(k, ux)
 
         match self.spatial_dimension:
             case 1:
                 # for (1+1)
-                return - k**3 / (2*np.pi*self.e_b(k, ux)*N) * (1+2*self.n_b(beta * self.e_b(k, ux)))
+                return - k**3 / (2*np.pi*e*N) * (1+2*self.n_b(beta * e))
             case 2:
                 # for (2+1)
-                return - k**4 / (4*np.pi*2*self.e_b(k, ux)*N) * (1+2*self.n_b(beta * self.e_b(k, ux)))
+                return - k**4 / (4*np.pi*2*e*N) * (1+2*self.n_b(beta * e))
 
     def f(self, t, u):
+        k = self.k(t)
         if self.mean_field_flag:
             diffusion = np.zeros_like(self.grid)
         else:
             u_x = np.ediff1d(u, to_begin=u[1], to_end=u[-1]-u[-2]) / self.dx
-            Q_cal = self.Q(t, u_x)
+            Q_cal = self.Q(k, u_x)
             diffusion = np.ediff1d(Q_cal)/self.dx
 
-        self.print_counter += 1
-        if self.print_counter > 0:
-            print_string = f'{t:.7f} ({self.k(t):.5e})/{self.t(self.kir):.2f}'
-            self.print_counter -= 1000
-            print(print_string)
+        if self.console_logging_flag:
+            self.print_counter += 1
+            if self.print_counter > 0:
+                print_string = f'{t:.7f} ({self.k(t):.5e})/{self.t(self.kir):.2f}'
+                self.print_counter -= 1000
+                print(print_string)
 
-        return diffusion + self.S(t, self.grid)
+        return diffusion + self.S(k, self.grid)
 
     def compute(self):
         tir = self.t(self.kir)
-        t_eval_points = np.linspace(0, tir, 1000)
+        if self.number_of_observables is None:
+            t_eval_points = None
+        elif self.number_of_observables == 0:
+            raise RuntimeWarning(
+                f'numer of observables must be larger then 1, it is currently {self.number_of_observables}')
+        elif self.number_of_observables == 1:
+            t_eval_points = [tir]
+        else:
+            t_eval_points = np.linspace(0, tir, self.number_of_observables)
 
+        time_start = time.time()
         self.solution = solve_ivp(
-            self.f, [0, tir], self.u_init, lband=1, uband=1, method="LSODA", rtol=1e-12, atol=1e-12, t_eval=t_eval_points)
+            self.f, [0, tir], self.u_init, lband=1, uband=1, method="LSODA", rtol=self.tolerance, atol=self.tolerance, t_eval=t_eval_points)
+        self.time_elapsed = (time.time() - time_start)
 
         if self.solution.status != 0:
             raise RuntimeError(
@@ -155,7 +170,7 @@ class Flow():
                 if current_root_value > testPotential:
                     current_root_value = testPotential
                     current_root = test_root
-                    # TODO: remember that you have coosen a different mass square
+                    # NOTE: remember that you have coosen mass square from the next interval
                     massSquare = (y[i+2] - y[i+1])/(grid[i+2] - grid[i+1])
 
         return {"sigma": current_root, "massSquare": massSquare, "first_div": first_div, "third_div": third_div, "pressure": - current_root_value, "t": t, "k": self.k(t), "y": y}
@@ -172,7 +187,7 @@ class Flow():
             os.makedirs(path)
 
         # generate filenames
-        filename = f'mu={self.mu}_T={self.T}_sigmaMax={self.grid[-1]}_Lambda={self.Lambda}_kir={self.kir}_nGrid={len(self.grid)}_nFlavor={self.N_Flavor}.hdf5'
+        filename = f'mu={self.mu}_T={self.T}_sigmaMax={self.grid[-1]}_Lambda={self.Lambda}_kir={self.kir}_nGrid={len(self.grid)}_nFlavor={self.N_Flavor}_tolerance={self.tolerance:e}.hdf5'
         path_and_filename = os.path.join(path, filename)
 
         # compute observables
@@ -186,6 +201,8 @@ class Flow():
             f.attrs["NGrid"] = len(self.grid)
             f.attrs["mu"] = self.mu
             f.attrs["T"] = self.T
+            f.attrs["computation_time"] = self.time_elapsed
+            f.attrs["tolerance"] = self.tolerance
             f.create_dataset("t", data=observables["t"])
             f.create_dataset("sigma", data=observables["sigma"])
             f.create_dataset("massSquare", data=observables["massSquare"])
@@ -204,17 +221,18 @@ class Flow():
 
 
 def main():
-    Lambda = 1000
-    kir = 1e-3
-    n_flavor = 20
+    Lambda = 1e6
+    kir = 5e-2
+    n_flavor = 2
     # n_flavor = np.Inf
     sigma_max = 6.0
-    mu = 0.4
+    mu = 0.0
     T = 0.0125
     n_grid = 1000
     path = './'
 
-    flow = Flow(Lambda, kir, sigma_max, n_grid, mu, T, n_flavor, True)
+    flow = Flow(Lambda, kir, sigma_max, n_grid, mu, T,
+                n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=1e-8)
 
     flow.compute()
     flow.get_observables_for_all_positions()
