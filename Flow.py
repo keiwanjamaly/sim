@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.typing as npt
-from scipy.integrate import solve_ivp, trapezoid
+from scipy.integrate import solve_ivp, trapezoid, cumulative_trapezoid
 import pandas as pd
 import h5py
 import os
@@ -24,7 +24,7 @@ class Flow():
         self.grid_u, self.dx = np.linspace(0,
                                            sigma_max, n_grid, retstep=True)
         self.grid_log_mass = self.grid_u[:-1] + self.dx/2
-        self.spatial_dimension = 1
+        self.spatial_dimension = 2
         self.log_mass_init = np.full(
             self.grid_log_mass.shape, np.log(self.Lambda**2 + self.initial_condition()))
         self.mu = mu
@@ -152,15 +152,22 @@ class Flow():
         log_mass = self.solution.y[:, j]
 
         # calculate u
-        enlarged_log_mass = np.empty(len(self.grid_u)+len(self.grid_log_mass))
-        enlarged_log_mass[1:-1:2] = log_mass[:]
-        enlarged_log_mass[2:-2:2] = (log_mass[:-1] + log_mass[1:])/2
+        enlarged_log_mass = np.empty(2+len(self.grid_log_mass))
+        enlarged_log_mass[1:-1] = log_mass[:]
         enlarged_log_mass[0] = 2*log_mass[0] - log_mass[1]
         enlarged_log_mass[-1] = 2*log_mass[-1] - log_mass[-2]
-        y = np.empty(enlarged_log_mass.shape[0]+1)
+        enlarged_grid_log_mass = np.empty(2+len(self.grid_log_mass))
+        enlarged_grid_log_mass[1:-1] = self.grid_log_mass[:]
+        enlarged_grid_log_mass[0] = enlarged_grid_log_mass[1] - self.dx
+        enlarged_grid_log_mass[-1] = enlarged_grid_log_mass[-2] + self.dx
+
+        log_mass_at_grid_u = np.interp(
+            self.grid_u, enlarged_grid_log_mass, enlarged_log_mass)
+
+        y = np.empty_like(self.grid_u)
         y[0] = 0
-        y[1:] = np.cumsum(np.exp(enlarged_log_mass) - self.k(t)**2)*self.dx/2
-        y = y[::2]
+        y[1:] = cumulative_trapezoid(
+            np.exp(log_mass_at_grid_u) - self.k(t)**2, self.grid_u)
 
         grid = self.grid_u
         massSquare = (y[1] - y[0])/self.dx
@@ -244,11 +251,11 @@ def main():
     sigma_max = 6.0
     mu = 0.1
     T = 0.1
-    n_grid = 1000
+    n_grid = 2000
     path = './'
 
     flow = Flow(Lambda, kir, sigma_max, n_grid, mu, T,
-                n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=5e-14)
+                n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=1e-17)
 
     flow.compute()
     flow.get_observables_for_all_positions()
