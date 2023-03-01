@@ -5,7 +5,7 @@ import os
 from itertools import chain
 
 
-def execute_flow(Lambda, kir, sigma_max, n_grid, mu, T, n_flavor, path, tolerance):
+def execute_flow(Lambda, kir, sigma_max, n_grid, mu, T, n_flavor, path, tolerance=1e-13):
     flow = Flow(Lambda, kir, sigma_max, n_grid, mu,
                 T, n_flavor, tolerance=tolerance, number_of_observables=1000)
     flow.compute()
@@ -95,14 +95,14 @@ if __name__ == "__main__":
     #     job_list, generate_calculate_delta_sigma_test(0.0125, 0.0))
 
     # lambda tests
-    # job_list = chain(job_list, generate_calculate_cutoff_test(0.35, 0.0))
-    # job_list = chain(job_list, generate_calculate_cutoff_test(0.35, 0.4))
-    # job_list = chain(
-    #     job_list, generate_calculate_cutoff_test(0.0125, 0.6))
-    # job_list = chain(
-    #     job_list, generate_calculate_cutoff_test(0.0125, 0.0))
+    job_list = chain(job_list, generate_calculate_cutoff_test(0.35, 0.0))
+    job_list = chain(job_list, generate_calculate_cutoff_test(0.35, 0.4))
+    job_list = chain(
+        job_list, generate_calculate_cutoff_test(0.0125, 0.6))
+    job_list = chain(
+        job_list, generate_calculate_cutoff_test(0.0125, 0.0))
 
     # tolerance tests
-    job_list = chain(
-        job_list, generate_calculate_tolerance_test(0.0125, 0.0))
+    # job_list = chain(
+    #     job_list, generate_calculate_tolerance_test(0.0125, 0.0))
     Parallel(n_jobs=-1)(job_list)
