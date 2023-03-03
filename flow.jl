@@ -8,24 +8,29 @@ using LinearAlgebra
 
 mutable struct FlowConfig
     sigmaMax::Float64
-    grid::Array{Float64}
+    grid_u::Array{Float64}
+    grid_log_mass::Array{Float64}
     dx::Float64
     Lambda::Float64
     mu::Float64
     T::Float64
     beta::Float64
     NFlavor::Float64
+    spatialDimension::Int8
     function FlowConfig(sigmaMax::Float64, nGrid::Int64, Lambda::Float64, mu::Float64, T::Float64, NFlavor::Float64)
         self = new()
 
         self.sigmaMax = 6.0
-        self.grid = LinRange(0, sigmaMax, nGrid)
-        self.dx = sigmaMax / nGrid
+        self.grid_u = LinRange(0, sigmaMax, nGrid)
+        self.dx = sigmaMax / (nGrid-1)
+        self.grid_log_mass = map(x -> x+self.dx/2, self.grid_u[1:end-1])
         self.Lambda = Lambda
         self.mu = mu
         self.T = T
         self.beta = 1 / T
         self.NFlavor = NFlavor
+
+        self.spatialDimension = 1
 
         return self
     end
@@ -43,8 +48,8 @@ function e_f(k::Float64, sigma::Float64)
     sqrt(k^2 + sigma^2)
 end
 
-function e_b(k::Float64, ux::Float64)
-    sqrt(k^2 + ux)
+function e_b(log_mass::Float64)
+    exp(log_mass/2)
 end
 
 function n_b(x)
@@ -62,10 +67,14 @@ function differentiateU(u::Array{Float64}, dx::Float64)
 end
 
 function initialCondition(x::Float64, config::FlowConfig)
-    # intermediate = 1 / sqrt(1 + (1 / config.Lambda)^2)
-    # (x / pi) * (atanh(intermediate) - intermediate)
-    intermediate = (2 + config.Lambda^2 - 2 * sqrt(1 + config.Lambda^2)) / (2 * pi * sqrt(1 + config.Lambda^2))
-    x * intermediate
+    if config.spatialDimension == 1
+        intermediate = 1 / sqrt(1 + (1 / config.Lambda)^2)
+        massSquare = (atanh(intermediate) - intermediate) / pi
+    elseif config.spatialDimension == 2
+        intermediate = (2 + config.Lambda^2 - 2 * sqrt(1 + config.Lambda^2)) / (2 * pi * sqrt(1 + config.Lambda^2))
+        massSquare = intermediate
+    
+    return log(config.Lambda^2 + massSquare)
 end
 
 function S(k::Float64, sigma::Float64, config::FlowConfig)
@@ -73,18 +82,20 @@ function S(k::Float64, sigma::Float64, config::FlowConfig)
     beta = config.beta
     minus = beta * (e - config.mu) / 2
     plus = beta * (e + config.mu) / 2
-
-    # sigma * k^3 / (4 * e^3 * pi) * (e * beta * (sech(minus)^2 + sech(plus)^2) - 2 * (tanh(minus) + tanh(plus)))
-    sigma * k^4 / (8 * e^3 * pi) * (e * beta * (sech(minus)^2 + sech(plus)^2) - 2 * (tanh(minus) + tanh(plus)))
+    if config.spatialDimension == 1
+        return sigma * k^3 / (4 * e^3 * pi) * (e * beta * (sech(minus)^2 + sech(plus)^2) - 2 * (tanh(minus) + tanh(plus)))
+    elseif config.spatialDimension == 2
+    return sigma * k^4 / (8 * e^3 * pi) * (e * beta * (sech(minus)^2 + sech(plus)^2) - 2 * (tanh(minus) + tanh(plus)))
 end
 
-function Q(k::Float64, ux::Float64, config::FlowConfig)
-    e = e_b(k, ux)
+function Q(k::Float64, log_mass::Float64, config::FlowConfig)
+    e = e_b(k, log_mass)
     beta = config.beta
     N = config.NFlavor
-
-    # -k^3 / (2 * pi * e * N) * (1 + 2 * n_b(beta * e))
-    -k^4 / (4 * pi * e * N) * (1 + 2 * n_b(beta * e))
+    if config.spatialDimension == 1
+        return -k^3 / (2 * pi * e * N) * (1 + 2 * n_b(beta * e))
+    elseif config.spatialDimension == 2
+        return -k^4 / (4 * pi * e * N) * (1 + 2 * n_b(beta * e))
 end
 
 
@@ -93,12 +104,14 @@ function f(du::Array{Float64}, u::Array{Float64}, p::FlowConfig, t::Float64)
     for i = 1:length(u)
         du[i] = S(k, p.grid[i], p)
     end
-
-    ux = differentiateU(u, config.dx)
-    QArr = Array{Float64}(undef, length(u) + 1)
-    for i = 1:length(ux)
-        QArr[i] = Q(k, ux[i], config)
-    end
+    
+    if isinf(p.NFlavor)
+        diffusion = Array{Float64}(0, length(u) + 1)
+    else
+        diffusion = Array{Float64}(undef, length(u) + 1)
+        for i = 1:length(ux)
+            QArr[i] = Q(k, ux[i], config)
+        end
 
     for i = 1:length(u)
         du[i] += (QArr[i+1] - QArr[i]) / config.dx
@@ -118,7 +131,7 @@ end
 
 sigmaMax = 6.0
 nGrid = 1000
-Lambda = 1e3
+Lambda = 1e5
 kir = 1e-4
 mu = 0.1
 T = 0.1

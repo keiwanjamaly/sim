@@ -101,7 +101,7 @@ class Flow():
                 self.print_counter -= 1000
                 print(print_string)
 
-        result = np.exp(-log_mass)*(np.ediff1d(W)/self.dx - 2*k**2)
+        result = np.exp(-log_mass) * (np.ediff1d(W)/self.dx - 2*k**2)
         return result
 
     def compute(self):
@@ -152,22 +152,9 @@ class Flow():
         log_mass = self.solution.y[:, j]
 
         # calculate u
-        enlarged_log_mass = np.empty(2+len(self.grid_log_mass))
-        enlarged_log_mass[1:-1] = log_mass[:]
-        enlarged_log_mass[0] = 2*log_mass[0] - log_mass[1]
-        enlarged_log_mass[-1] = 2*log_mass[-1] - log_mass[-2]
-        enlarged_grid_log_mass = np.empty(2+len(self.grid_log_mass))
-        enlarged_grid_log_mass[1:-1] = self.grid_log_mass[:]
-        enlarged_grid_log_mass[0] = enlarged_grid_log_mass[1] - self.dx
-        enlarged_grid_log_mass[-1] = enlarged_grid_log_mass[-2] + self.dx
-
-        log_mass_at_grid_u = np.interp(
-            self.grid_u, enlarged_grid_log_mass, enlarged_log_mass)
-
         y = np.empty_like(self.grid_u)
         y[0] = 0
-        y[1:] = cumulative_trapezoid(
-            np.exp(log_mass_at_grid_u) - self.k(t)**2, self.grid_u)
+        y[1:] = np.cumsum(np.exp(log_mass) - self.k(t)**2)*self.dx
 
         grid = self.grid_u
         massSquare = (y[1] - y[0])/self.dx
@@ -248,14 +235,14 @@ def main():
     kir = 1e-4
     n_flavor = 2
     # n_flavor = np.Inf
-    sigma_max = 6.0
+    sigma_max = 3.0
     mu = 0.1
     T = 0.1
-    n_grid = 2000
+    n_grid = 200
     path = './'
 
     flow = Flow(Lambda, kir, sigma_max, n_grid, mu, T,
-                n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=1e-17)
+                n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=5e-14)
 
     flow.compute()
     flow.get_observables_for_all_positions()
