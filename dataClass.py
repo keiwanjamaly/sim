@@ -28,8 +28,9 @@ class FlowData:
         X, Y = np.meshgrid(x, y)
         Z = self.file["Q"]
 
-        fig, ax = plt.subplots()
-        img = ax.pcolormesh(X, Y, Z)  # , vmin=-0.5, vmax=1.0)
+        # fig, ax = plt.subplots()
+        img = plt.pcolor(X, Y, Z)  # , vmin=-0.5, vmax=1.0)
+        plt.xscale("log")
         plt.colorbar(img)
         plt.show()
 

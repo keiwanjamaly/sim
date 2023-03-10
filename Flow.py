@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 from scipy.integrate import solve_ivp, trapezoid
+from scipy.optimize import newton
 import pandas as pd
 import h5py
 import os
@@ -17,12 +18,60 @@ def csch(x):
     return 1/np.sinh(x)
 
 
+def solve_A(x_max, x_min):
+    def f(A):
+        return A*np.exp(x_min/A) - x_max
+
+    return newton(f, 1.1, maxiter=1000)
+
+
 class Flow():
-    def __init__(self, Lambda, kir, sigma_max, n_grid, mu, T, N_Flavor=np.Inf, save_flow_flag=False, console_logging=False, number_of_observables=None, tolerance=1e-12) -> None:
+    def __init__(self, Lambda, kir, sigma_max_1, sigma_max_2, dx_first, dx_last, mu, T, N_Flavor=np.Inf, save_flow_flag=False, console_logging=False, number_of_observables=None, tolerance=1e-12) -> None:
         self.Lambda = Lambda
         self.kir = kir
-        self.grid, self.dx = np.linspace(0,
-                                         sigma_max, n_grid, retstep=True)
+
+        # build non-uniform-grid
+        grid_linear = np.arange(0, sigma_max_1, dx_first)
+        logarithmic_start_point = 2*grid_linear[-1] - grid_linear[-2]
+        dh = 10**(grid_linear[-1] - grid_linear[-2] +
+                  logarithmic_start_point) - 10**logarithmic_start_point
+        grid_logarithmic = [logarithmic_start_point]
+        i = 0
+        b = solve_b(sigma_max_2, dx_last, dh)
+
+        N = int(np.ceil(np.log(sigma_max_2/logarithmic_start_point)/(dh*np.log(b)))) - 1
+        grid_logarithmic = np.logspace(np.log(
+            logarithmic_start_point)/np.log(b), np.log(sigma_max_2)/np.log(b), N, base=b)
+        # factor = np.log(logarithmic_start_point)/np.log(b)
+        # while grid_logarithmic[-1] < sigma_max_2:
+        #     i += 1
+        #     grid_logarithmic.append(
+        #         b**(factor + i * dh))
+        ex_l = -(grid_linear[1] - grid_linear[0])
+        i += 1
+        ex_r = b**(factor + i * dh)
+        self.grid = np.concatenate((grid_linear, grid_logarithmic))
+        self.dx_direct = np.ediff1d(
+            self.grid, to_begin=(self.grid[0] - ex_l), to_end=(ex_r - self.grid[-1]))
+        midpoints = np.empty(len(self.grid) + 1)
+        midpoints[0] = (ex_l + self.grid[0])/1
+        midpoints[1:-1] = (self.grid[1:] + self.grid[:-1])/2
+        midpoints[-1] = (ex_r + self.grid[-1])/1
+        self.dx_half = np.ediff1d(midpoints)
+
+        # compute extrapolation factors
+        self.c_0 = (ex_r - self.grid[-2]) * (ex_r - self.grid[-1])
+        self.c_0 /= (self.grid[-3] - self.grid[-2]) * \
+            (self.grid[-3] - self.grid[-1])
+
+        self.c_1 = (ex_r - self.grid[-3]) * (ex_r - self.grid[-1])
+        self.c_1 /= (self.grid[-2] - self.grid[-3]) * \
+            (self.grid[-2] - self.grid[-1])
+
+        self.c_2 = (ex_r - self.grid[-3]) * (ex_r - self.grid[-2])
+        self.c_2 /= (self.grid[-1] - self.grid[-3]) * \
+            (self.grid[-1] - self.grid[-2])
+
         self.spatial_dimension = 2
         self.u_init = self.initial_condition()
         self.mu = mu
@@ -36,6 +85,9 @@ class Flow():
         self.print_counter = 0
         self.number_of_observables = number_of_observables
         self.tolerance = tolerance
+
+    def __str__(self):
+        return f'using {len(self.grid)} grid points'
 
     def initial_condition(self) -> npt.NDArray[np.float64]:
         match self.spatial_dimension:
@@ -83,10 +135,12 @@ class Flow():
         if self.mean_field_flag:
             return np.zeros_like(self.grid)
         else:
+            extrapolation_u_right = self.c_0 * \
+                u[-3] + self.c_1 * u[-2] + self.c_2 * u[-1]
             ux = np.ediff1d(
-                u, to_begin=u[1], to_end=2*u[-1] - 3*u[-2] + u[-3]) / self.dx
+                u, to_begin=u[1], to_end=(extrapolation_u_right - u[-1])) / self.dx_direct
             Q_cal = self.Q(k, ux)
-            return np.ediff1d(Q_cal)/self.dx
+            return np.ediff1d(Q_cal)/self.dx_half
 
     def f(self, t, u):
         k = self.k(t)
@@ -152,10 +206,11 @@ class Flow():
         current_root_value = 0
         y = self.solution.y[:, j]
         grid = self.grid
-        massSquare = (y[1] - y[0])/self.dx
+        dx_0 = self.grid[1] - self.grid[0]
+        massSquare = (y[1] - y[0])/dx_0
 
         # calculate third derivative at sigma = 0
-        third_div = (y[2] - 2*y[1])/self.dx**3
+        third_div = (y[2] - 2*y[1])/dx_0**3
         first_div = massSquare
 
         for i in range(1, len(y)-1):
@@ -237,14 +292,19 @@ def main():
     kir = 1e-4
     n_flavor = 2
     # n_flavor = np.Inf
-    sigma_max = 24.0
+    dx_first = 0.006
+    sigma_max_1 = 1.2
+    dx_last = 10
+    sigma_max_2 = 1000
     mu = 0.0
     T = 0.3
-    n_grid = 4000
     path = './'
 
-    flow = Flow(Lambda, kir, sigma_max, n_grid, mu, T,
+    # kir, sigma_max_1, sigma_max_2, dx_first, dx_last, mu
+
+    flow = Flow(Lambda, kir, sigma_max_1, sigma_max_2, dx_first, dx_last, mu, T,
                 n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=1e-12)
+    print(flow)
 
     flow.compute()
     flow.get_observables_for_all_positions()
