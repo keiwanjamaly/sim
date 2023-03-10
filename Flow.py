@@ -79,14 +79,19 @@ class Flow():
                 # for (2+1)
                 return - k**4 / (4*np.pi*2*e*N) * (1+2*self.n_b(beta * e))
 
+    def compute_diffusion(self, k, u):
+        if self.mean_field_flag:
+            return np.zeros_like(self.grid)
+        else:
+            ux = np.ediff1d(
+                u, to_begin=u[1], to_end=2*u[-1] - 3*u[-2] + u[-3]) / self.dx
+            Q_cal = self.Q(k, ux)
+            return np.ediff1d(Q_cal)/self.dx
+
     def f(self, t, u):
         k = self.k(t)
-        if self.mean_field_flag:
-            diffusion = np.zeros_like(self.grid)
-        else:
-            u_x = np.ediff1d(u, to_begin=u[1], to_end=u[-1]-u[-2]) / self.dx
-            Q_cal = self.Q(k, u_x)
-            diffusion = np.ediff1d(Q_cal)/self.dx
+
+        diffusion = self.compute_diffusion(k, u)
 
         if self.console_logging_flag:
             self.print_counter += 1
@@ -111,12 +116,12 @@ class Flow():
 
         time_start = time.time()
         self.solution = solve_ivp(
-            self.f, [0, tir], self.u_init, lband=1, uband=1, method="LSODA", rtol=self.tolerance, atol=self.tolerance, t_eval=t_eval_points)
+            self.f, [0, tir], self.u_init, lband=1, uband=2, method="LSODA", rtol=self.tolerance, atol=self.tolerance, t_eval=t_eval_points)
         self.time_elapsed = (time.time() - time_start)
 
         if self.solution.status != 0:
             raise RuntimeError(
-                f'Incomplete flow for mu={self.mu}, T={self.T}, sigmaMax={self.grid[-1]}, Lambda={self.Lambda}, N={len(self.grid)}')
+                f'Incomplete flow for mu={self.mu}, T={self.T}, sigmaMax={self.grid[-1]}, Lambda={self.Lambda}, N={len(self.grid)}\nSolution broke at t={self.solution.t[-1]} ({self.k(self.solution.t[-1])})')
 
     def k(self, t):
         return self.Lambda * np.exp(-t)
@@ -187,7 +192,7 @@ class Flow():
             os.makedirs(path)
 
         # generate filenames
-        filename = f'mu={self.mu}_T={self.T}_sigmaMax={self.grid[-1]}_Lambda={self.Lambda}_kir={self.kir}_nGrid={len(self.grid)}_nFlavor={self.N_Flavor}_tolerance={self.tolerance:e}.hdf5'
+        filename = f'mu={self.mu}_T={self.T}_sigmaMax={self.grid[-1]}_Lambda={self.Lambda}_kir={self.kir}_nGrid={len(self.grid)}_nFlavor={self.N_Flavor}_tolerance={self.tolerance:e}_d={self.spatial_dimension}.hdf5'
         path_and_filename = os.path.join(path, filename)
 
         # compute observables
@@ -215,24 +220,31 @@ class Flow():
                 f.create_dataset("grid", data=self.grid)
                 y_dset = f.create_dataset("y", (observables["y"].to_numpy().shape[0], len(
                     self.grid)))
+                Q_dset = f.create_dataset("Q", (observables["y"].to_numpy().shape[0], len(
+                    self.grid)))
+                S_dset = f.create_dataset("S", (observables["y"].to_numpy().shape[0], len(
+                    self.grid)))
 
                 for i, elem in enumerate(observables["y"].to_numpy()):
                     y_dset[i, :] = elem[:]
+                    k = observables["k"][i]
+                    Q_dset[i, :] = self.compute_diffusion(k, elem[:])
+                    S_dset[i, :] = self.S(k, self.grid)
 
 
 def main():
-    Lambda = 1e6
-    kir = 5e-2
+    Lambda = 1e3
+    kir = 1e-4
     n_flavor = 2
     # n_flavor = np.Inf
-    sigma_max = 6.0
+    sigma_max = 24.0
     mu = 0.0
-    T = 0.0125
-    n_grid = 1000
+    T = 0.3
+    n_grid = 4000
     path = './'
 
     flow = Flow(Lambda, kir, sigma_max, n_grid, mu, T,
-                n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=1e-8)
+                n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=1e-12)
 
     flow.compute()
     flow.get_observables_for_all_positions()
