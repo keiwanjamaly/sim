@@ -1,5 +1,6 @@
 import h5py
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import numpy as np
 
 
@@ -22,16 +23,26 @@ class FlowData:
                       f'tolerances = {self.file.attrs["tolerance"]}; time = {self.file.attrs["computation_time"]:.2f}']
         return '\n'.join(print_list)
 
-    def plot_Q(self):
-        x = self.file["grid"]
-        y = self.file["t"]
-        X, Y = np.meshgrid(x, y)
-        Z = self.file["Q"]
+    def plot_Data(self, data, xlim=None):
+        x = self.file["grid"][:]
+
+        if not (xlim is None):
+            filter_function = np.logical_and(x >= xlim[0], x <= xlim[-1])
+        else:
+            filter_function = np.full_like(x, True, dtype=bool)
 
         # fig, ax = plt.subplots()
-        img = plt.pcolor(X, Y, Z)  # , vmin=-0.5, vmax=1.0)
-        plt.xscale("log")
+        # print(x[filter_function])
+        y = self.file["t"]
+        X, Y = np.meshgrid(x[filter_function], y)
+        Z = self.file[data][:, filter_function]
+        # , vmin=-0.5, vmax=1.0)
+        img = plt.pcolor(X, Y, Z)
         plt.colorbar(img)
+        plt.xlabel(r'$\sigma$')
+        plt.ylabel(r'$t$')
+        plt.title(
+            r'$\partial_{\sigma}Q$ for $\Lambda='+f'{self.file.attrs["Lambda"]:.1e}'+r'$'+f' d={self.file_name[-6]}')
         plt.show()
 
     def get_max_Q_of_x(self):

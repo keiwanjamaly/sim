@@ -6,6 +6,7 @@ import pandas as pd
 import h5py
 import os
 import time
+from Grid import SinhGrid
 
 
 @np.errstate(over="ignore")
@@ -18,61 +19,14 @@ def csch(x):
     return 1/np.sinh(x)
 
 
-def solve_A(x_max, x_min):
-    def f(A):
-        return A*np.exp(x_min/A) - x_max
-
-    return newton(f, 1.1, maxiter=1000)
-
-
 class Flow():
-    def __init__(self, Lambda, kir, sigma_max_1, sigma_max_2, dx_first, dx_last, mu, T, N_Flavor=np.Inf, save_flow_flag=False, console_logging=False, number_of_observables=None, tolerance=1e-12) -> None:
+    def __init__(self, Lambda, kir, grid, mu, T, N_Flavor=np.Inf, save_flow_flag=False, console_logging=False, number_of_observables=None, tolerance=1e-12) -> None:
         self.Lambda = Lambda
         self.kir = kir
 
-        # build non-uniform-grid
-        grid_linear = np.arange(0, sigma_max_1, dx_first)
-        logarithmic_start_point = 2*grid_linear[-1] - grid_linear[-2]
-        dh = 10**(grid_linear[-1] - grid_linear[-2] +
-                  logarithmic_start_point) - 10**logarithmic_start_point
-        grid_logarithmic = [logarithmic_start_point]
-        i = 0
-        b = solve_b(sigma_max_2, dx_last, dh)
+        self.grid = grid
 
-        N = int(np.ceil(np.log(sigma_max_2/logarithmic_start_point)/(dh*np.log(b)))) - 1
-        grid_logarithmic = np.logspace(np.log(
-            logarithmic_start_point)/np.log(b), np.log(sigma_max_2)/np.log(b), N, base=b)
-        # factor = np.log(logarithmic_start_point)/np.log(b)
-        # while grid_logarithmic[-1] < sigma_max_2:
-        #     i += 1
-        #     grid_logarithmic.append(
-        #         b**(factor + i * dh))
-        ex_l = -(grid_linear[1] - grid_linear[0])
-        i += 1
-        ex_r = b**(factor + i * dh)
-        self.grid = np.concatenate((grid_linear, grid_logarithmic))
-        self.dx_direct = np.ediff1d(
-            self.grid, to_begin=(self.grid[0] - ex_l), to_end=(ex_r - self.grid[-1]))
-        midpoints = np.empty(len(self.grid) + 1)
-        midpoints[0] = (ex_l + self.grid[0])/1
-        midpoints[1:-1] = (self.grid[1:] + self.grid[:-1])/2
-        midpoints[-1] = (ex_r + self.grid[-1])/1
-        self.dx_half = np.ediff1d(midpoints)
-
-        # compute extrapolation factors
-        self.c_0 = (ex_r - self.grid[-2]) * (ex_r - self.grid[-1])
-        self.c_0 /= (self.grid[-3] - self.grid[-2]) * \
-            (self.grid[-3] - self.grid[-1])
-
-        self.c_1 = (ex_r - self.grid[-3]) * (ex_r - self.grid[-1])
-        self.c_1 /= (self.grid[-2] - self.grid[-3]) * \
-            (self.grid[-2] - self.grid[-1])
-
-        self.c_2 = (ex_r - self.grid[-3]) * (ex_r - self.grid[-2])
-        self.c_2 /= (self.grid[-1] - self.grid[-3]) * \
-            (self.grid[-1] - self.grid[-2])
-
-        self.spatial_dimension = 2
+        self.spatial_dimension = 1
         self.u_init = self.initial_condition()
         self.mu = mu
         self.T = T
@@ -87,19 +41,19 @@ class Flow():
         self.tolerance = tolerance
 
     def __str__(self):
-        return f'using {len(self.grid)} grid points'
+        return f'using {len(self.grid.sigma)} grid points'
 
     def initial_condition(self) -> npt.NDArray[np.float64]:
         match self.spatial_dimension:
             case 1:
                 # for (1+1)
                 intermediate = 1/np.sqrt(1+(1/self.Lambda)**2)
-                return (self.grid/np.pi)*(np.arctanh(intermediate) - intermediate)
+                return (self.grid.sigma/np.pi)*(np.arctanh(intermediate) - intermediate)
             case 2:
                 # for (2+1)
                 intermediate = (2+self.Lambda**2 - 2*np.sqrt(1+self.Lambda**2)
                                 ) / (2*np.pi*np.sqrt(1+self.Lambda**2))
-                return intermediate*self.grid
+                return intermediate*self.grid.sigma
 
     def S(self, k, sigma):
         e = self.e_f(k, sigma)
@@ -135,12 +89,12 @@ class Flow():
         if self.mean_field_flag:
             return np.zeros_like(self.grid)
         else:
-            extrapolation_u_right = self.c_0 * \
-                u[-3] + self.c_1 * u[-2] + self.c_2 * u[-1]
+            extrapolation_u_right = self.grid.c_0 * \
+                u[-3] + self.grid.c_1 * u[-2] + self.grid.c_2 * u[-1]
             ux = np.ediff1d(
-                u, to_begin=u[1], to_end=(extrapolation_u_right - u[-1])) / self.dx_direct
+                u, to_begin=u[1], to_end=(extrapolation_u_right - u[-1])) / self.grid.dx_direct
             Q_cal = self.Q(k, ux)
-            return np.ediff1d(Q_cal)/self.dx_half
+            return np.ediff1d(Q_cal)/self.grid.dx_half
 
     def f(self, t, u):
         k = self.k(t)
@@ -154,7 +108,7 @@ class Flow():
                 self.print_counter -= 1000
                 print(print_string)
 
-        return diffusion + self.S(k, self.grid)
+        return diffusion + self.S(k, self.grid.sigma)
 
     def compute(self):
         tir = self.t(self.kir)
@@ -197,16 +151,13 @@ class Flow():
     def n_b(self, x):
         return 1/(np.exp(x) - 1)
 
-    def get_grid(self):
-        return self.grid
-
     def get_observables_at_pos(self, j):
         t = self.solution.t[j]
         current_root = 0
         current_root_value = 0
         y = self.solution.y[:, j]
-        grid = self.grid
-        dx_0 = self.grid[1] - self.grid[0]
+        grid = self.grid.sigma
+        dx_0 = grid[1] - grid[0]
         massSquare = (y[1] - y[0])/dx_0
 
         # calculate third derivative at sigma = 0
@@ -247,22 +198,23 @@ class Flow():
             os.makedirs(path)
 
         # generate filenames
-        filename = f'mu={self.mu}_T={self.T}_sigmaMax={self.grid[-1]}_Lambda={self.Lambda}_kir={self.kir}_nGrid={len(self.grid)}_nFlavor={self.N_Flavor}_tolerance={self.tolerance:e}_d={self.spatial_dimension}.hdf5'
+        filename = f'mu={self.mu}_T={self.T}_sigmaMax={self.grid.sigma[-1]}_Lambda={self.Lambda}_kir={self.kir}_nGrid={len(self.grid.sigma)}_nFlavor={self.N_Flavor}_tolerance={self.tolerance:e}_d={self.spatial_dimension}.hdf5'
         path_and_filename = os.path.join(path, filename)
 
         # compute observables
         observables = self.observable_array
 
         with h5py.File(path_and_filename, "w") as f:
-            f.attrs["sigmaMax"] = self.grid[-1]
+            f.attrs["sigmaMax"] = self.grid.sigma[-1]
             f.attrs["NFlavor"] = self.N_Flavor
             f.attrs["Lambda"] = self.Lambda
             f.attrs["kir"] = self.kir
-            f.attrs["NGrid"] = len(self.grid)
+            f.attrs["NGrid"] = len(self.grid.sigma)
             f.attrs["mu"] = self.mu
             f.attrs["T"] = self.T
             f.attrs["computation_time"] = self.time_elapsed
             f.attrs["tolerance"] = self.tolerance
+            f.attrs["spatial_dimension"] = self.spatial_dimension
             f.create_dataset("t", data=observables["t"])
             f.create_dataset("sigma", data=observables["sigma"])
             f.create_dataset("massSquare", data=observables["massSquare"])
@@ -272,37 +224,36 @@ class Flow():
             f.create_dataset("k", data=observables["k"])
 
             if self.save_flow_flag:
-                f.create_dataset("grid", data=self.grid)
+                f.create_dataset("grid", data=self.grid.sigma)
                 y_dset = f.create_dataset("y", (observables["y"].to_numpy().shape[0], len(
-                    self.grid)))
+                    self.grid.sigma)))
                 Q_dset = f.create_dataset("Q", (observables["y"].to_numpy().shape[0], len(
-                    self.grid)))
+                    self.grid.sigma)))
                 S_dset = f.create_dataset("S", (observables["y"].to_numpy().shape[0], len(
-                    self.grid)))
+                    self.grid.sigma)))
 
                 for i, elem in enumerate(observables["y"].to_numpy()):
                     y_dset[i, :] = elem[:]
                     k = observables["k"][i]
                     Q_dset[i, :] = self.compute_diffusion(k, elem[:])
-                    S_dset[i, :] = self.S(k, self.grid)
+                    S_dset[i, :] = self.S(k, self.grid.sigma)
 
 
 def main():
-    Lambda = 1e3
+    Lambda = 2e3
     kir = 1e-4
     n_flavor = 2
     # n_flavor = np.Inf
-    dx_first = 0.006
-    sigma_max_1 = 1.2
-    dx_last = 10
-    sigma_max_2 = 1000
+    n_grid = 1000
+    sigma_max = 1000*np.sqrt(2)
     mu = 0.0
     T = 0.3
-    path = './'
+    path = './cutoff/d_1'
 
-    # kir, sigma_max_1, sigma_max_2, dx_first, dx_last, mu
+    # kir, sigma_max, grid, mu,
+    grid = SinhGrid(sigma_max, n_grid)
 
-    flow = Flow(Lambda, kir, sigma_max_1, sigma_max_2, dx_first, dx_last, mu, T,
+    flow = Flow(Lambda, kir, grid, mu, T,
                 n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=1e-12)
     print(flow)
 
