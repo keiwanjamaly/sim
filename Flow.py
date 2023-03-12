@@ -26,7 +26,7 @@ class Flow():
 
         self.grid = grid
 
-        self.spatial_dimension = 1
+        self.spatial_dimension = 2
         self.u_init = self.initial_condition()
         self.mu = mu
         self.T = T
@@ -248,7 +248,7 @@ def main():
     sigma_max = 1000*np.sqrt(2)
     mu = 0.0
     T = 0.3
-    path = './cutoff/d_1'
+    path = './refinement'
 
     # kir, sigma_max, grid, mu,
     grid = SinhGrid(sigma_max, n_grid)
