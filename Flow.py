@@ -19,13 +19,13 @@ def csch(x):
 
 
 class Flow():
-    def __init__(self, Lambda, kir, grid, mu, T, N_Flavor=np.Inf, save_flow_flag=False, console_logging=False, number_of_observables=None, tolerance=1e-12) -> None:
+    def __init__(self, spatial_dimension, Lambda, kir, grid, mu, T, N_Flavor=np.Inf, save_flow_flag=False, console_logging=False, number_of_observables=None, tolerance=1e-12) -> None:
         self.Lambda = Lambda
         self.kir = kir
 
         self.grid = grid
 
-        self.spatial_dimension = 2
+        self.spatial_dimension = spatial_dimension
         self.u_init = self.initial_condition()
         self.mu = mu
         self.T = T
@@ -106,7 +106,7 @@ class Flow():
         if self.console_logging_flag:
             self.print_counter += 1
             if self.print_counter > 0:
-                print_string = f'{t:.7f} ({self.k(t):.5e})/{self.t(self.kir):.2f}; time elapsed = {(timeit.default_timer() - self.time_start):.2f} seconds'
+                print_string = f'\t{t:.7f} ({self.k(t):.5e})/{self.t(self.kir):.2f}; time elapsed = {(timeit.default_timer() - self.time_start):.2f} seconds'
                 self.print_counter -= 1000
                 print(print_string, end='\r')
 
@@ -132,10 +132,10 @@ class Flow():
 
         if self.solution.status != 0:
             raise RuntimeError(
-                f'Incomplete flow for mu={self.mu}, T={self.T}, sigmaMax={self.grid[-1]}, Lambda={self.Lambda}, N={len(self.grid)}\nSolution broke at t={self.solution.t[-1]} ({self.k(self.solution.t[-1])})')
+                f'Incomplete flow for mu={self.mu}, T={self.T}, sigmaMax={self.grid[-1]}, Lambda={self.Lambda}, N={len(self.grid.sigma)}\nSolution broke at t={self.solution.t[-1]} ({self.k(self.solution.t[-1])})')
         else:
             print(
-                f'integration done from 0 ({self.Lambda:.1e}) to {self.solution.t[-1]:.3f} ({self.k(self.solution.t[-1]):.1e}); time elapsed = {self.time_elapsed:.2f} seconds')
+                f'\tIntegration done from 0 ({self.Lambda:.1e}) to {self.solution.t[-1]:.3f} ({self.k(self.solution.t[-1]):.1e}); time elapsed = {self.time_elapsed:.2f} seconds')
 
     def k(self, t):
         return self.Lambda * np.exp(-t)
@@ -248,13 +248,14 @@ class Flow():
 
 
 def main():
-    Lambda = 5e2
+    spatial_dimension = 2
+    Lambda = 1e3
     kir = 1e-4
     n_flavor = 2
     # n_flavor = np.Inf
-    mu = 0.0
-    T = 0.3
-    path = './test'
+    mu = 0.1
+    T = 0.1
+    path = './'
 
     # configure spatial domain
     n_grid = 1000
@@ -262,7 +263,7 @@ def main():
     extrapolation_oder = 1
     grid = Grid.RescaledGeomspace(sigma_max, n_grid, extrapolation_oder)
 
-    flow = Flow(Lambda, kir, grid, mu, T,
+    flow = Flow(spatial_dimension, Lambda, kir, grid, mu, T,
                 n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=1e-12)
     print(flow)
 

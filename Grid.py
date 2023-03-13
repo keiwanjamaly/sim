@@ -65,6 +65,29 @@ class RescaledGeomspace(Grid):
         super().__init__(self.sigma, extrapolation)
 
 
+class LinearLogGrid(Grid):
+    def __init__(self, sigma_max, delta_sigma, N, extrapolation) -> None:
+        linear_grid = np.arange(0, 1, delta_sigma)
+        log_grid = np.geomspace(1, sigma_max, N - len(linear_grid))
+        self.sigma = np.concatenate((linear_grid, log_grid))
+        super().__init__(self.sigma, extrapolation)
+
+
+class LinearLogGridWithContiniousTransition(Grid):
+    def __init__(self, sigma_max, N, extrapolation) -> None:
+        i = 2
+        linear_grid = np.linspace(0, 1, i)
+        log_grid = np.geomspace(1, sigma_max, N - len(linear_grid))
+
+        while (linear_grid[-1] - linear_grid[-2]) > (log_grid[1] - log_grid[0]):
+            i += 1
+            linear_grid = np.linspace(0, 1, i, endpoint=False)
+            log_grid = np.geomspace(1, sigma_max, N - len(linear_grid))
+
+        self.sigma = np.concatenate((linear_grid, log_grid))
+        super().__init__(self.sigma, extrapolation)
+
+
 class SinhGrid(Grid):
     def __init__(self, sigma_max, N, extrapolation) -> None:
         # create nonuniform grid
