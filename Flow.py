@@ -4,7 +4,8 @@ from scipy.integrate import solve_ivp, trapezoid
 import pandas as pd
 import h5py
 import os
-import time
+import timeit
+import Grid
 
 
 @np.errstate(over="ignore")
@@ -18,11 +19,12 @@ def csch(x):
 
 
 class Flow():
-    def __init__(self, Lambda, kir, sigma_max, n_grid, mu, T, N_Flavor=np.Inf, save_flow_flag=False, console_logging=False, number_of_observables=None, tolerance=1e-12) -> None:
+    def __init__(self, Lambda, kir, grid, mu, T, N_Flavor=np.Inf, save_flow_flag=False, console_logging=False, number_of_observables=None, tolerance=1e-12) -> None:
         self.Lambda = Lambda
         self.kir = kir
-        self.grid, self.dx = np.linspace(0,
-                                         sigma_max, n_grid, retstep=True)
+
+        self.grid = grid
+
         self.spatial_dimension = 2
         self.u_init = self.initial_condition()
         self.mu = mu
@@ -37,17 +39,20 @@ class Flow():
         self.number_of_observables = number_of_observables
         self.tolerance = tolerance
 
+    def __str__(self):
+        return str(self.grid)
+
     def initial_condition(self) -> npt.NDArray[np.float64]:
         match self.spatial_dimension:
             case 1:
                 # for (1+1)
                 intermediate = 1/np.sqrt(1+(1/self.Lambda)**2)
-                return (self.grid/np.pi)*(np.arctanh(intermediate) - intermediate)
+                return (self.grid.sigma/np.pi)*(np.arctanh(intermediate) - intermediate)
             case 2:
                 # for (2+1)
                 intermediate = (2+self.Lambda**2 - 2*np.sqrt(1+self.Lambda**2)
                                 ) / (2*np.pi*np.sqrt(1+self.Lambda**2))
-                return intermediate*self.grid
+                return intermediate*self.grid.sigma
 
     def S(self, k, sigma):
         e = self.e_f(k, sigma)
@@ -83,10 +88,12 @@ class Flow():
         if self.mean_field_flag:
             return np.zeros_like(self.grid)
         else:
+            extrapolation_u_right = self.grid.c_0 * \
+                u[-3] + self.grid.c_1 * u[-2] + self.grid.c_2 * u[-1]
             ux = np.ediff1d(
-                u, to_begin=u[1], to_end=2*u[-1] - 3*u[-2] + u[-3]) / self.dx
+                u, to_begin=u[1], to_end=(extrapolation_u_right - u[-1])) / self.grid.dx_direct
             Q_cal = self.Q(k, ux)
-            return np.ediff1d(Q_cal)/self.dx
+            return np.ediff1d(Q_cal)/self.grid.dx_half
 
     def f(self, t, u):
         k = self.k(t)
@@ -96,11 +103,11 @@ class Flow():
         if self.console_logging_flag:
             self.print_counter += 1
             if self.print_counter > 0:
-                print_string = f'{t:.7f} ({self.k(t):.5e})/{self.t(self.kir):.2f}'
+                print_string = f'{t:.7f} ({self.k(t):.5e})/{self.t(self.kir):.2f}; time elapsed = {(timeit.default_timer() - self.time_start):.2f} seconds'
                 self.print_counter -= 1000
-                print(print_string)
+                print(print_string, end='\r')
 
-        return diffusion + self.S(k, self.grid)
+        return diffusion + self.S(k, self.grid.sigma)
 
     def compute(self):
         tir = self.t(self.kir)
@@ -114,14 +121,17 @@ class Flow():
         else:
             t_eval_points = np.linspace(0, tir, self.number_of_observables)
 
-        time_start = time.time()
+        self.time_start = timeit.default_timer()
         self.solution = solve_ivp(
             self.f, [0, tir], self.u_init, lband=1, uband=2, method="LSODA", rtol=self.tolerance, atol=self.tolerance, t_eval=t_eval_points)
-        self.time_elapsed = (time.time() - time_start)
+        self.time_elapsed = (timeit.default_timer() - self.time_start)
 
         if self.solution.status != 0:
             raise RuntimeError(
                 f'Incomplete flow for mu={self.mu}, T={self.T}, sigmaMax={self.grid[-1]}, Lambda={self.Lambda}, N={len(self.grid)}\nSolution broke at t={self.solution.t[-1]} ({self.k(self.solution.t[-1])})')
+        else:
+            print(
+                f'integration done from 0 ({self.Lambda:.1e}) to {self.solution.t[-1]:.3f} ({self.k(self.solution.t[-1]):.1e}); time elapsed = {self.time_elapsed:.2f} seconds')
 
     def k(self, t):
         return self.Lambda * np.exp(-t)
@@ -143,19 +153,17 @@ class Flow():
     def n_b(self, x):
         return 1/(np.exp(x) - 1)
 
-    def get_grid(self):
-        return self.grid
-
     def get_observables_at_pos(self, j):
         t = self.solution.t[j]
         current_root = 0
         current_root_value = 0
         y = self.solution.y[:, j]
-        grid = self.grid
-        massSquare = (y[1] - y[0])/self.dx
+        grid = self.grid.sigma
+        dx_0 = grid[1] - grid[0]
+        massSquare = (y[1] - y[0])/dx_0
 
         # calculate third derivative at sigma = 0
-        third_div = (y[2] - 2*y[1])/self.dx**3
+        third_div = (y[2] - 2*y[1])/dx_0**3
         first_div = massSquare
 
         for i in range(1, len(y)-1):
@@ -192,22 +200,23 @@ class Flow():
             os.makedirs(path)
 
         # generate filenames
-        filename = f'mu={self.mu}_T={self.T}_sigmaMax={self.grid[-1]}_Lambda={self.Lambda}_kir={self.kir}_nGrid={len(self.grid)}_nFlavor={self.N_Flavor}_tolerance={self.tolerance:e}_d={self.spatial_dimension}.hdf5'
+        filename = f'mu={self.mu}_T={self.T}_sigmaMax={self.grid.sigma[-1]}_Lambda={self.Lambda}_kir={self.kir}_nGrid={len(self.grid.sigma)}_nFlavor={self.N_Flavor}_tolerance={self.tolerance:e}_d={self.spatial_dimension}.hdf5'
         path_and_filename = os.path.join(path, filename)
 
         # compute observables
         observables = self.observable_array
 
         with h5py.File(path_and_filename, "w") as f:
-            f.attrs["sigmaMax"] = self.grid[-1]
+            f.attrs["sigmaMax"] = self.grid.sigma[-1]
             f.attrs["NFlavor"] = self.N_Flavor
             f.attrs["Lambda"] = self.Lambda
             f.attrs["kir"] = self.kir
-            f.attrs["NGrid"] = len(self.grid)
+            f.attrs["NGrid"] = len(self.grid.sigma)
             f.attrs["mu"] = self.mu
             f.attrs["T"] = self.T
             f.attrs["computation_time"] = self.time_elapsed
             f.attrs["tolerance"] = self.tolerance
+            f.attrs["spatial_dimension"] = self.spatial_dimension
             f.create_dataset("t", data=observables["t"])
             f.create_dataset("sigma", data=observables["sigma"])
             f.create_dataset("massSquare", data=observables["massSquare"])
@@ -217,34 +226,37 @@ class Flow():
             f.create_dataset("k", data=observables["k"])
 
             if self.save_flow_flag:
-                f.create_dataset("grid", data=self.grid)
+                f.create_dataset("grid", data=self.grid.sigma)
                 y_dset = f.create_dataset("y", (observables["y"].to_numpy().shape[0], len(
-                    self.grid)))
+                    self.grid.sigma)))
                 Q_dset = f.create_dataset("Q", (observables["y"].to_numpy().shape[0], len(
-                    self.grid)))
+                    self.grid.sigma)))
                 S_dset = f.create_dataset("S", (observables["y"].to_numpy().shape[0], len(
-                    self.grid)))
+                    self.grid.sigma)))
 
                 for i, elem in enumerate(observables["y"].to_numpy()):
                     y_dset[i, :] = elem[:]
                     k = observables["k"][i]
                     Q_dset[i, :] = self.compute_diffusion(k, elem[:])
-                    S_dset[i, :] = self.S(k, self.grid)
+                    S_dset[i, :] = self.S(k, self.grid.sigma)
 
 
 def main():
-    Lambda = 1e3
+    Lambda = 5e2
     kir = 1e-4
     n_flavor = 2
     # n_flavor = np.Inf
-    sigma_max = 24.0
+    n_grid = 1000
+    sigma_max = 1000
     mu = 0.0
     T = 0.3
-    n_grid = 4000
-    path = './'
+    path = './refinement'
 
-    flow = Flow(Lambda, kir, sigma_max, n_grid, mu, T,
+    grid = Grid.RescaledGeomspace(sigma_max, n_grid)
+
+    flow = Flow(Lambda, kir, grid, mu, T,
                 n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=1e-12)
+    print(flow)
 
     flow.compute()
     flow.get_observables_for_all_positions()
