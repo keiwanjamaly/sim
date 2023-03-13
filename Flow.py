@@ -39,6 +39,9 @@ class Flow():
         self.number_of_observables = number_of_observables
         self.tolerance = tolerance
 
+        # compute extrapolation coefficients
+        self.c_0, self.c_1, self.c_2 = self.grid.compute_extrapolation_factors()
+
     def __str__(self):
         return str(self.grid)
 
@@ -88,8 +91,8 @@ class Flow():
         if self.mean_field_flag:
             return np.zeros_like(self.grid)
         else:
-            extrapolation_u_right = self.grid.c_0 * \
-                u[-3] + self.grid.c_1 * u[-2] + self.grid.c_2 * u[-1]
+            extrapolation_u_right = self.c_0 * \
+                u[-3] + self.c_1 * u[-2] + self.c_2 * u[-1]
             ux = np.ediff1d(
                 u, to_begin=u[1], to_end=(extrapolation_u_right - u[-1])) / self.grid.dx_direct
             Q_cal = self.Q(k, ux)
@@ -122,8 +125,9 @@ class Flow():
             t_eval_points = np.linspace(0, tir, self.number_of_observables)
 
         self.time_start = timeit.default_timer()
+        # using the extrapolation order, to define the uband of the Jacobi matrix
         self.solution = solve_ivp(
-            self.f, [0, tir], self.u_init, lband=1, uband=2, method="LSODA", rtol=self.tolerance, atol=self.tolerance, t_eval=t_eval_points)
+            self.f, [0, tir], self.u_init, lband=1, uband=self.grid.extrapolation, method="LSODA", rtol=self.tolerance, atol=self.tolerance, t_eval=t_eval_points)
         self.time_elapsed = (timeit.default_timer() - self.time_start)
 
         if self.solution.status != 0:
@@ -217,6 +221,8 @@ class Flow():
             f.attrs["computation_time"] = self.time_elapsed
             f.attrs["tolerance"] = self.tolerance
             f.attrs["spatial_dimension"] = self.spatial_dimension
+            f.attrs["grid_style"] = type(self.grid).__name__
+            f.attrs["extrapolation_order"] = self.grid.extrapolation
             f.create_dataset("t", data=observables["t"])
             f.create_dataset("sigma", data=observables["sigma"])
             f.create_dataset("massSquare", data=observables["massSquare"])
@@ -246,13 +252,15 @@ def main():
     kir = 1e-4
     n_flavor = 2
     # n_flavor = np.Inf
-    n_grid = 1000
-    sigma_max = 1000
     mu = 0.0
     T = 0.3
-    path = './refinement'
+    path = './test'
 
-    grid = Grid.RescaledGeomspace(sigma_max, n_grid)
+    # configure spatial domain
+    n_grid = 1000
+    sigma_max = 1000
+    extrapolation_oder = 1
+    grid = Grid.RescaledGeomspace(sigma_max, n_grid, extrapolation_oder)
 
     flow = Flow(Lambda, kir, grid, mu, T,
                 n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=1e-12)
