@@ -248,18 +248,18 @@ class Flow():
 
 
 def main():
-    spatial_dimension = 2
+    spatial_dimension = 1
     Lambda = 1e3
     kir = 1e-4
     n_flavor = 2
     # n_flavor = np.Inf
-    mu = 0.1
-    T = 0.1
+    mu = 0.0
+    T = 0.3
     path = './'
 
     # configure spatial domain
     n_grid = 1000
-    sigma_max = 1000
+    sigma_max = 10
     extrapolation_oder = 1
     grid = Grid.RescaledGeomspace(sigma_max, n_grid, extrapolation_oder)
 

@@ -18,6 +18,7 @@ class FlowData:
         self.sigma_max = self.file.attrs["sigmaMax"]
         self.spatial_dimension = self.file.attrs["spatial_dimension"]
         self.extrapolation = "linear" if self.file.attrs["extrapolation_order"] == 1 else "quadratic"
+        self.computation_time = self.file.attrs["computation_time"]
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -42,8 +43,6 @@ class FlowData:
         X, Y = np.meshgrid(x, y)
         Z = self.file[part]
 
-        # ax.set_title("sdf")
-
         img = ax.pcolormesh(X, Y, Z)  # , vmin=-0.5, vmax=1.0)
         ax.set_ylabel("t")
         ax.set_xlabel(r'$\sigma$')
@@ -67,7 +66,7 @@ class FlowData:
             max_Q[i] = np.max(Q[:, i])
 
         ax.plot(self.file["grid"][:], max_Q,
-                label=r'$\sigma_{max}$=' + label, c=color)
+                label=label, c=color)
         ax.set_xlabel(r'$\sigma$')
         ax.set_title(r'max$_t(\partial_{\sigma}\ Q(t, \sigma))$')
 
@@ -90,3 +89,14 @@ class FlowData:
                    self.file["massSquare"][pos]], color=color, s=10)
         ax.set_xlabel(r'$\sigma_{max}$')
         ax.set_ylabel(r'$m_{\sigma}^2$')
+
+    def add_massSquare_vs_Lambda_at_pos(self, ax: plt.Axes, pos=-1, color=None):
+        ax.scatter([self.Lambda], [
+                   self.file["massSquare"][pos]], color=color, s=10)
+        ax.set_xlabel(r'$\Lambda$')
+        ax.set_ylabel(r'$m_{\sigma}^2$')
+
+    def add_computation_time(self, ax: plt.Axes, color=None):
+        ax.scatter([self.Lambda], [self.computation_time], color=color, s=10)
+        ax.set_xlabel(r'$\Lambda$')
+        ax.set_ylabel('time in [s]')
