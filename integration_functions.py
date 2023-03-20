@@ -1,5 +1,7 @@
 import numpy as np
-from numba import njit
+from numba import njit, objmode
+import timeit
+import sys
 
 
 @njit(cache=True)
@@ -100,24 +102,29 @@ def f(t, u, *args):
     """
     The *args conventions are as follows
     *args = (Lambda, mean_field_flag, console_logging_flag, grid, dx_direct,
-      dx_half, c_0, c_1, c_2, mu, beta, N_Flavor, spatial_dimension, time_start, kir)
+      dx_half, c_0, c_1, c_2, mu, beta, N_Flavor, spatial_dimension, time_start, kir, iterations)
     """
+
     Lambda = args[0]
     k = Lambda * np.exp(-t)
-    sigma = grid = args[3]
+    grid = args[3]
 
     diffusion = compute_diffusion(k, u, *args)
-    # for elem in diffusion:
-    #     print(elem)
 
     source = S(k, grid, *args)
-    # for elem in source:
-    #     print(elem)
 
-    # if console_logging_flag:
-    #     time_elapsed = timeit.default_timer() - time_start
-    #     print_string = '{time:.7f} ({k:.5e})/{kirval:.2f}; time elapsed = {te:.2f} seconds'.format(
-    #         time=t, kval=k, kirval=kir, te=time_elapsed)
-    #     print(print_string)
+    console_logging_flag = args[2]
+    time_start = args[13]
+    tir = args[14]
+
+    if console_logging_flag:
+        args[-1][0] += 1
+        if args[-1][0] > 0:
+            with objmode():
+                time_elapsed = timeit.default_timer() - time_start
+                print_string = '{time:.7f} ({kval:.5e})/{tirval:.2f}; time elapsed = {te:.2f} seconds'.format(
+                    time=t, kval=k, tirval=tir, te=time_elapsed)
+                args[-1][0] -= 1000
+                print(print_string, end="\r")
 
     return diffusion + source

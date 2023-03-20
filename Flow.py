@@ -63,7 +63,7 @@ class Flow():
         self.time_start = timeit.default_timer()
 
         args_for_integration = (self.Lambda, self.mean_field_flag, self.console_logging_flag, self.grid.sigma, self.grid.dx_direct,
-                                self.grid.dx_half, self.c_0, self.c_1, self.c_2, self.mu, self.beta, self.N_Flavor, self.spatial_dimension, self.time_start, self.kir,)
+                                self.grid.dx_half, self.c_0, self.c_1, self.c_2, self.mu, self.beta, self.N_Flavor, self.spatial_dimension, self.time_start, tir, np.array([0]),)
         # using the extrapolation order, to define the uband of the Jacobi matrix
         self.solution = solve_ivp(
             int_fun.f, [0, tir], self.u_init, lband=1, uband=self.grid.extrapolation, method="LSODA", rtol=self.tolerance, atol=self.tolerance, t_eval=t_eval_points, args=args_for_integration)
@@ -74,7 +74,7 @@ class Flow():
                 f'Incomplete flow for mu={self.mu}, T={self.T}, sigmaMax={self.grid[-1]}, Lambda={self.Lambda}, N={len(self.grid.sigma)}\nSolution broke at t={self.solution.t[-1]} ({self.k(self.solution.t[-1])})')
         else:
             print(
-                f'\tIntegration done from 0 ({self.Lambda:.1e}) to {self.solution.t[-1]:.3f} ({self.k(self.solution.t[-1]):.1e}); time elapsed = {self.time_elapsed:.2f} seconds')
+                f'    Integration done from 0 ({self.Lambda:.1e}) to {self.solution.t[-1]:.3f} ({self.k(self.solution.t[-1]):.1e}); time elapsed = {self.time_elapsed:.2f} seconds')
 
     def k(self, t):
         return self.Lambda * np.exp(-t)
@@ -173,7 +173,7 @@ class Flow():
 
 
 def main():
-    spatial_dimension = 2
+    spatial_dimension = 1
     Lambda = 1e3
     kir = 1e-4
     n_flavor = 2
@@ -184,9 +184,9 @@ def main():
 
     # configure spatial domain
     n_grid = 1000
-    sigma_max = 10
+    sigma_max = 6
     extrapolation_oder = 1
-    grid = Grid.RescaledGeomspace(sigma_max, n_grid, extrapolation_oder)
+    grid = Grid.UniformGrid(sigma_max, n_grid, extrapolation_oder)
 
     flow = Flow(spatial_dimension, Lambda, kir, grid, mu, T,
                 n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=1e-12)
