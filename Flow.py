@@ -6,16 +6,7 @@ import h5py
 import os
 import timeit
 import Grid
-
-
-@np.errstate(over="ignore")
-def sech(x):
-    return 1/np.cosh(x)
-
-
-@np.errstate(over="ignore")
-def csch(x):
-    return 1/np.sinh(x)
+import integration_functions as int_fun
 
 
 class Flow():
@@ -57,61 +48,6 @@ class Flow():
                                 ) / (2*np.pi*np.sqrt(1+self.Lambda**2))
                 return intermediate*self.grid.sigma
 
-    def S(self, k, sigma):
-        e = self.e_f(k, sigma)
-        mu = self.mu
-        beta = self.beta
-        minus = beta * (e-mu) / 2
-        plus = beta * (e+mu) / 2
-
-        match self.spatial_dimension:
-            case 1:
-                # for (1+1)
-                return sigma*k**3/(4*e**3*np.pi) * (e * beta * (sech(minus)**2 + sech(plus)**2)
-                                                    - 2*(np.tanh(minus) + np.tanh(plus)))
-            case 2:
-                # for (2+1)
-                return sigma*k**4/(8*e**3*np.pi) * (e * beta * (sech(minus)**2 + sech(plus)**2)
-                                                    - 2*(np.tanh(minus) + np.tanh(plus)))
-
-    def Q(self, k, ux):
-        beta = self.beta
-        N = self.N_Flavor
-        e = self.e_b(k, ux)
-
-        match self.spatial_dimension:
-            case 1:
-                # for (1+1)
-                return - k**3 / (2*np.pi*e*N) * (1+2*self.n_b(beta * e))
-            case 2:
-                # for (2+1)
-                return - k**4 / (4*np.pi*2*e*N) * (1+2*self.n_b(beta * e))
-
-    def compute_diffusion(self, k, u):
-        if self.mean_field_flag:
-            return np.zeros_like(self.grid)
-        else:
-            extrapolation_u_right = self.c_0 * \
-                u[-3] + self.c_1 * u[-2] + self.c_2 * u[-1]
-            ux = np.ediff1d(
-                u, to_begin=u[1], to_end=(extrapolation_u_right - u[-1])) / self.grid.dx_direct
-            Q_cal = self.Q(k, ux)
-            return np.ediff1d(Q_cal)/self.grid.dx_half
-
-    def f(self, t, u):
-        k = self.k(t)
-
-        diffusion = self.compute_diffusion(k, u)
-
-        if self.console_logging_flag:
-            self.print_counter += 1
-            if self.print_counter > 0:
-                print_string = f'\t{t:.7f} ({self.k(t):.5e})/{self.t(self.kir):.2f}; time elapsed = {(timeit.default_timer() - self.time_start):.2f} seconds'
-                self.print_counter -= 1000
-                print(print_string, end='\r')
-
-        return diffusion + self.S(k, self.grid.sigma)
-
     def compute(self):
         tir = self.t(self.kir)
         if self.number_of_observables is None:
@@ -125,9 +61,12 @@ class Flow():
             t_eval_points = np.linspace(0, tir, self.number_of_observables)
 
         self.time_start = timeit.default_timer()
+
+        args_for_integration = (self.Lambda, self.mean_field_flag, self.console_logging_flag, self.grid.sigma, self.grid.dx_direct,
+                                self.grid.dx_half, self.c_0, self.c_1, self.c_2, self.mu, self.beta, self.N_Flavor, self.spatial_dimension, self.time_start, self.kir,)
         # using the extrapolation order, to define the uband of the Jacobi matrix
         self.solution = solve_ivp(
-            self.f, [0, tir], self.u_init, lband=1, uband=self.grid.extrapolation, method="LSODA", rtol=self.tolerance, atol=self.tolerance, t_eval=t_eval_points)
+            int_fun.f, [0, tir], self.u_init, lband=1, uband=self.grid.extrapolation, method="LSODA", rtol=self.tolerance, atol=self.tolerance, t_eval=t_eval_points, args=args_for_integration)
         self.time_elapsed = (timeit.default_timer() - self.time_start)
 
         if self.solution.status != 0:
@@ -142,20 +81,6 @@ class Flow():
 
     def t(self, k):
         return - np.log(k/self.Lambda)
-
-    def e_f(self, k, sigma):
-        return np.sqrt(k**2 + sigma**2)
-
-    def e_b(self, k, u_x):
-        return np.sqrt(k**2 + u_x)
-
-    @np.errstate(over="ignore")
-    def n_f(self, x):
-        return 1/(np.exp(x) + 1)
-
-    @np.errstate(over="ignore")
-    def n_b(self, x):
-        return 1/(np.exp(x) - 1)
 
     def get_observables_at_pos(self, j):
         t = self.solution.t[j]
@@ -243,12 +168,12 @@ class Flow():
                 for i, elem in enumerate(observables["y"].to_numpy()):
                     y_dset[i, :] = elem[:]
                     k = observables["k"][i]
-                    Q_dset[i, :] = self.compute_diffusion(k, elem[:])
-                    S_dset[i, :] = self.S(k, self.grid.sigma)
+                    # Q_dset[i, :] = int_fun.compute_diffusion(k, elem[:])
+                    # S_dset[i, :] = int_fun.S(k, self.grid.sigma)
 
 
 def main():
-    spatial_dimension = 1
+    spatial_dimension = 2
     Lambda = 1e3
     kir = 1e-4
     n_flavor = 2
