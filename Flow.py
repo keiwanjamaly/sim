@@ -7,22 +7,75 @@ import os
 import timeit
 import Grid
 import integration_functions as int_fun
+from numba import njit, objmode
+import timeit
+
+
+@njit(cache=True)
+def compute_diffusion(k, u, mean_field_flag, Q, grid, dx_direct, dx_half, c_0, c_1, c_2, *args):
+    if mean_field_flag:
+        return np.zeros_like(grid)
+    else:
+        extrapolation_u_right = c_0 * \
+            u[-3] + c_1 * u[-2] + c_2 * u[-1]
+        endpoint = extrapolation_u_right - u[-1]
+        # perform u_x derivative
+        ux = np.empty_like(dx_direct)
+        ux[0] = u[1]
+        ux[1:-1] = u[1:] - u[:-1]
+        ux[-1] = endpoint
+        ux = ux / dx_direct
+        Q_cal = Q(k, ux, *args)
+
+        return (Q_cal[1:] - Q_cal[:-1])/dx_half
+
+
+@njit(cache=True)
+def f(t, u, mean_field_flag, Q, S, Lambda, grid, dx_direct, dx_half, c_0, c_1, c_2, console_logging_flag, time_start, tir, iterator, *args):
+    """
+    The *args conventions are as follows
+    *args = (Lambda, mean_field_flag, console_logging_flag, grid, dx_direct,
+      dx_half, c_0, c_1, c_2, mu, beta, N_Flavor, spatial_dimension, time_start, kir, iterations,)
+    """
+
+    k = Lambda * np.exp(-t)
+
+    diffusion = compute_diffusion(
+        k, u, mean_field_flag, Q, grid, dx_direct, dx_half, c_0, c_1, c_2, *args)
+
+    source = S(k, grid, *args)
+
+    if console_logging_flag:
+        iterator[0] += 1
+        if iterator[0] > 0:
+            with objmode():
+                time_elapsed = timeit.default_timer() - time_start
+                print_string = '{time:.7f} ({kval:.5e})/{tirval:.2f}; time elapsed = {te:.2f} seconds'.format(
+                    time=t, kval=k, tirval=tir, te=time_elapsed)
+                iterator[0] -= 1000
+                print(print_string, end="\r")
+
+    return diffusion + source
 
 
 class Flow():
-    def __init__(self, spatial_dimension, Lambda, kir, grid, mu, T, N_Flavor=np.Inf, save_flow_flag=False, console_logging=False, number_of_observables=None, tolerance=1e-12) -> None:
+    def __init__(self, spatial_dimension, Lambda, kir, grid, mu, T, filename=None, initial_condition=None, Q=None, S=None, args=(), save_flow_flag=False, console_logging=False, number_of_observables=None, tolerance=1e-12):
         self.Lambda = Lambda
         self.kir = kir
+
+        self.function_args = args
 
         self.grid = grid
 
         self.spatial_dimension = spatial_dimension
-        self.u_init = self.initial_condition()
+        self.u_init = initial_condition(
+            self.grid.sigma, *self.function_args)
         self.mu = mu
         self.T = T
         self.beta = 1/T
-        self.N_Flavor = N_Flavor
-        self.mean_field_flag = np.isinf(N_Flavor)
+        self.S = S
+        self.Q = Q
+        self.mean_field_flag = Q is None
 
         self.save_flow_flag = save_flow_flag
         self.console_logging_flag = console_logging
@@ -33,20 +86,10 @@ class Flow():
         # compute extrapolation coefficients
         self.c_0, self.c_1, self.c_2 = self.grid.compute_extrapolation_factors()
 
+        self.filename = filename
+
     def __str__(self):
         return str(self.grid)
-
-    def initial_condition(self) -> npt.NDArray[np.float64]:
-        match self.spatial_dimension:
-            case 1:
-                # for (1+1)
-                intermediate = 1/np.sqrt(1+(1/self.Lambda)**2)
-                return (self.grid.sigma/np.pi)*(np.arctanh(intermediate) - intermediate)
-            case 2:
-                # for (2+1)
-                intermediate = (2+self.Lambda**2 - 2*np.sqrt(1+self.Lambda**2)
-                                ) / (2*np.pi*np.sqrt(1+self.Lambda**2))
-                return intermediate*self.grid.sigma
 
     def compute(self):
         tir = self.t(self.kir)
@@ -62,11 +105,14 @@ class Flow():
 
         self.time_start = timeit.default_timer()
 
-        args_for_integration = (self.Lambda, self.mean_field_flag, self.console_logging_flag, self.grid.sigma, self.grid.dx_direct,
-                                self.grid.dx_half, self.c_0, self.c_1, self.c_2, self.mu, self.beta, self.N_Flavor, self.spatial_dimension, self.time_start, tir, np.array([0]),)
+        # args_for_integration = (self.Lambda, self.mean_field_flag, self.console_logging_flag, self.grid.sigma, self.grid.dx_direct,
+        #                         self.grid.dx_half, self.c_0, self.c_1, self.c_2, self.mu, self.beta, self.N_Flavor, self.spatial_dimension, self.time_start, tir, np.array([0]),)
         # using the extrapolation order, to define the uband of the Jacobi matrix
+        # Q, S, Lambda, grid, dx_direct, dx_half, c_0, c_1, c_2, console_logging_flag, time_start, tir, iterator, *args
         self.solution = solve_ivp(
-            int_fun.f, [0, tir], self.u_init, lband=1, uband=self.grid.extrapolation, method="LSODA", rtol=self.tolerance, atol=self.tolerance, t_eval=t_eval_points, args=args_for_integration)
+            f, [0, tir], self.u_init, lband=1, uband=self.grid.extrapolation, method="LSODA", rtol=self.tolerance, atol=self.tolerance, t_eval=t_eval_points,
+            args=(self.mean_field_flag, self.Q, self.S, self.Lambda, self.grid.sigma, self.grid.dx_direct, self.grid.dx_half, self.c_0, self.c_1, self.c_2, self.console_logging_flag, self.time_start,
+                  tir, np.array([0]), *self.function_args, ))
         self.time_elapsed = (timeit.default_timer() - self.time_start)
 
         if self.solution.status != 0:
@@ -129,15 +175,14 @@ class Flow():
             os.makedirs(path)
 
         # generate filenames
-        filename = f'mu={self.mu}_T={self.T}_sigmaMax={self.grid.sigma[-1]}_Lambda={self.Lambda}_kir={self.kir}_nGrid={len(self.grid.sigma)}_nFlavor={self.N_Flavor}_tolerance={self.tolerance:e}_d={self.spatial_dimension}.hdf5'
-        path_and_filename = os.path.join(path, filename)
+        path_and_filename = os.path.join(path, self.filename)
 
         # compute observables
         observables = self.observable_array
 
         with h5py.File(path_and_filename, "w") as f:
             f.attrs["sigmaMax"] = self.grid.sigma[-1]
-            f.attrs["NFlavor"] = self.N_Flavor
+            # f.attrs["NFlavor"] = self.N_Flavor
             f.attrs["Lambda"] = self.Lambda
             f.attrs["kir"] = self.kir
             f.attrs["NGrid"] = len(self.grid.sigma)
@@ -168,19 +213,22 @@ class Flow():
                 for i, elem in enumerate(observables["y"].to_numpy()):
                     y_dset[i, :] = elem[:]
                     k = observables["k"][i]
-                    # Q_dset[i, :] = int_fun.compute_diffusion(k, elem[:])
-                    # S_dset[i, :] = int_fun.S(k, self.grid.sigma)
+                    Q_dset[i, :] = compute_diffusion(k, elem[:], self.mean_field_flag, self.Q, self.grid.sigma,
+                                                     self.grid.dx_direct, self.grid.dx_half, self.c_0, self.c_1, self.c_2, *self.function_args)
+                    S_dset[i, :] = self.S(
+                        k, self.grid.sigma, *self.function_args)
 
 
 def main():
     spatial_dimension = 1
-    Lambda = 1e3
+    Lambda = 1e5
     kir = 1e-4
     n_flavor = 2
     # n_flavor = np.Inf
     mu = 0.0
     T = 0.3
     path = './'
+    tolerance = 1e-10
 
     # configure spatial domain
     n_grid = 1000
@@ -188,8 +236,13 @@ def main():
     extrapolation_oder = 1
     grid = Grid.UniformGrid(sigma_max, n_grid, extrapolation_oder)
 
-    flow = Flow(spatial_dimension, Lambda, kir, grid, mu, T,
-                n_flavor, save_flow_flag=True, console_logging=True, number_of_observables=1000, tolerance=1e-12)
+    args = int_fun.generate_args(spatial_dimension, Lambda, mu, T, n_flavor)
+
+    filename = int_fun.generate_filename(
+        mu, T, sigma_max, n_grid, kir, tolerance, *args)
+
+    flow = Flow(spatial_dimension, Lambda, kir, grid, mu, T, filename=filename, initial_condition=int_fun.initial_condition, Q=int_fun.Q, S=int_fun.S,
+                args=args, save_flow_flag=True, console_logging=True, number_of_observables=100, tolerance=tolerance)
     print(flow)
 
     flow.compute()

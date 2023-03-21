@@ -1,7 +1,16 @@
 import numpy as np
-from numba import njit, objmode
-import timeit
-import sys
+from numba import njit
+
+
+def generate_filename(mu, T, sigma_max, n_grid, kir, tolerances, *args):
+    Lambda = get_lambda(*args)
+    n_Flavor = get_n_flavor(*args)
+    spatial_dimension = get_spatial_dimension(*args)
+    return f'mu={mu}_T={T}_sigmaMax={sigma_max}_Lambda={Lambda}_kir={kir}_nGrid={n_grid}_nFlavor={n_Flavor}_tolerance={tolerances:e}_d={spatial_dimension}.hdf5'
+
+
+def generate_args(spatial_dimension, Lambda, mu, T, n_flavor):
+    return (spatial_dimension, Lambda, mu, 1/T, n_flavor)
 
 
 @njit(cache=True)
@@ -34,12 +43,55 @@ def n_b(x):
     return 1/(np.exp(x) - 1)
 
 
+@njit
+def get_lambda(*args):
+    return args[1]
+
+
+@njit
+def get_spatial_dimension(*args):
+    return args[0]
+
+
+@njit
+def get_spatial_mu(*args):
+    return args[2]
+
+
+@njit
+def get_beta(*args):
+    return args[3]
+
+
+@njit
+def get_n_flavor(*args):
+    return args[4]
+
+
+@njit(cache=True)
+def initial_condition(grid, *args):
+    print(args)
+    spatial_dimension = get_spatial_dimension(*args)
+    Lambda = get_lambda(*args)
+
+    match spatial_dimension:
+        case 1:
+            # for (1+1)
+            intermediate = 1/np.sqrt(1+(1/Lambda)**2)
+            return (grid/np.pi)*(np.arctanh(intermediate) - intermediate)
+        case 2:
+            # for (2+1)
+            intermediate = (2+Lambda**2 - 2*np.sqrt(1+Lambda**2)
+                            ) / (2*np.pi*np.sqrt(1+Lambda**2))
+            return intermediate*grid
+
+
 @njit(cache=True)
 def S(k, sigma, *args):
-    spatial_dimension = args[12]
+    spatial_dimension = get_spatial_dimension(*args)
     e = e_f(k, sigma)
-    mu = args[9]
-    beta = args[10]
+    mu = get_spatial_mu(*args)
+    beta = get_beta(*args)
     minus = beta * (e-mu) / 2
     plus = beta * (e+mu) / 2
 
@@ -56,9 +108,9 @@ def S(k, sigma, *args):
 
 @njit(cache=True)
 def Q(k, ux, *args):
-    spatial_dimension = args[12]
-    beta = args[10]
-    N_Flavor = args[11]
+    spatial_dimension = get_spatial_dimension(*args)
+    beta = get_beta(*args)
+    N_Flavor = get_n_flavor(*args)
 
     e = e_b(k, ux)
 
@@ -69,62 +121,3 @@ def Q(k, ux, *args):
         case 2:
             # for (2+1)
             return - k**4 / (4*np.pi*2*e*N_Flavor) * (1+2*n_b(beta * e))
-
-
-@njit(cache=True)
-def compute_diffusion(k, u, *args):
-    mean_field_flag = args[1]
-    grid = args[3]
-    dx_direct = args[4]
-    dx_half = args[5]
-    c_0 = args[6]
-    c_1 = args[7]
-    c_2 = args[8]
-    if mean_field_flag:
-        return np.zeros_like(grid)
-    else:
-        extrapolation_u_right = c_0 * \
-            u[-3] + c_1 * u[-2] + c_2 * u[-1]
-        endpoint = extrapolation_u_right - u[-1]
-        # perform u_x derivative
-        ux = np.empty_like(dx_direct)
-        ux[0] = u[1]
-        ux[1:-1] = u[1:] - u[:-1]
-        ux[-1] = endpoint
-        ux = ux / dx_direct
-        Q_cal = Q(k, ux, *args)
-
-        return (Q_cal[1:] - Q_cal[:-1])/dx_half
-
-
-@njit(cache=True)
-def f(t, u, *args):
-    """
-    The *args conventions are as follows
-    *args = (Lambda, mean_field_flag, console_logging_flag, grid, dx_direct,
-      dx_half, c_0, c_1, c_2, mu, beta, N_Flavor, spatial_dimension, time_start, kir, iterations)
-    """
-
-    Lambda = args[0]
-    k = Lambda * np.exp(-t)
-    grid = args[3]
-
-    diffusion = compute_diffusion(k, u, *args)
-
-    source = S(k, grid, *args)
-
-    console_logging_flag = args[2]
-    time_start = args[13]
-    tir = args[14]
-
-    if console_logging_flag:
-        args[-1][0] += 1
-        if args[-1][0] > 0:
-            with objmode():
-                time_elapsed = timeit.default_timer() - time_start
-                print_string = '{time:.7f} ({kval:.5e})/{tirval:.2f}; time elapsed = {te:.2f} seconds'.format(
-                    time=t, kval=k, tirval=tir, te=time_elapsed)
-                args[-1][0] -= 1000
-                print(print_string, end="\r")
-
-    return diffusion + source
