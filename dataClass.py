@@ -79,7 +79,8 @@ class FlowData:
         ax.plot(k, massSquare, label=r'$m_{\sigma}^2$')
         ax.set_xlabel(r'$k$')
         ax.set_xscale("log")
-        ax.set_ylim(0.0, 1.0)
+        ax.set_ylim(-0.1, 1.0)
+        ax.grid()
         ax.set_title(
             r'flow of expectation values')
         ax.legend()

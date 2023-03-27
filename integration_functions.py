@@ -9,8 +9,17 @@ def generate_filename(mu, T, sigma_max, n_grid, kir, tolerances, *args):
     return f'mu={mu}_T={T}_sigmaMax={sigma_max}_Lambda={Lambda}_kir={kir}_nGrid={n_grid}_nFlavor={n_Flavor}_tolerance={tolerances:e}_d={spatial_dimension}.hdf5'
 
 
-def generate_args(spatial_dimension, Lambda, mu, T, n_flavor):
-    return (spatial_dimension, Lambda, mu, 1/T, n_flavor)
+def generate_args(spatial_dimension, Lambda, mu, T, n_flavor, h=1, sigma_0=1):
+    return (spatial_dimension, Lambda, mu, 1/T, n_flavor, h, sigma_0, T)
+
+
+def storage_dictionary(spatial_dimension, Lambda, mu, beta, n_flavor, h, sigma_0, T):
+    return {"spatial_dimension": spatial_dimension,
+            "mu": mu,
+            "T": T,
+            "NFlavor": n_flavor,
+            "h": h,
+            "sigma_0": sigma_0}
 
 
 @njit(cache=True)
@@ -24,8 +33,8 @@ def csch(x):
 
 
 @njit(cache=True)
-def e_f(k, sigma):
-    return np.sqrt(k**2 + sigma**2)
+def e_f(k, sigma, h):
+    return np.sqrt(k**2 + (h*sigma)**2)
 
 
 @njit(cache=True)
@@ -44,13 +53,13 @@ def n_b(x):
 
 
 @njit
-def get_lambda(*args):
-    return args[1]
+def get_spatial_dimension(*args):
+    return args[0]
 
 
 @njit
-def get_spatial_dimension(*args):
-    return args[0]
+def get_lambda(*args):
+    return args[1]
 
 
 @njit
@@ -68,42 +77,59 @@ def get_n_flavor(*args):
     return args[4]
 
 
+@njit
+def get_h(*args):
+    return args[5]
+
+
+@njit
+def get_sigma_0(*args):
+    return args[6]
+
+
+@njit
+def get_T(*args):
+    return args[7]
+
+
 @njit(cache=True)
 def initial_condition(grid, *args):
-    print(args)
     spatial_dimension = get_spatial_dimension(*args)
     Lambda = get_lambda(*args)
+    h = get_h(*args)
+    sigma_0 = get_sigma_0(*args)
 
     match spatial_dimension:
         case 1:
             # for (1+1)
-            intermediate = 1/np.sqrt(1+(1/Lambda)**2)
-            return (grid/np.pi)*(np.arctanh(intermediate) - intermediate)
+            intermediate = 1/np.sqrt(1+(h*sigma_0/Lambda)**2)
+            return (h**2*grid/np.pi)*(np.arctanh(intermediate) - intermediate)
         case 2:
             # for (2+1)
-            intermediate = (2+Lambda**2 - 2*np.sqrt(1+Lambda**2)
-                            ) / (2*np.pi*np.sqrt(1+Lambda**2))
-            return intermediate*grid
+            intermediate = (2*(h*sigma_0)**2+Lambda**2 - 2*h*sigma_0*np.sqrt((h*sigma_0)**2+Lambda**2)
+                            ) / (2*np.pi*np.sqrt((h*sigma_0)**2+Lambda**2))
+            return intermediate*grid*h**2
 
 
 @njit(cache=True)
 def S(k, sigma, *args):
     spatial_dimension = get_spatial_dimension(*args)
-    e = e_f(k, sigma)
     mu = get_spatial_mu(*args)
     beta = get_beta(*args)
+    h = get_h(*args)
+    e = e_f(k, sigma, h)
     minus = beta * (e-mu) / 2
     plus = beta * (e+mu) / 2
 
     match spatial_dimension:
         case 1:
             # for (1+1)
-            return sigma*k**3/(4*e**3*np.pi) * (e * beta * (sech(minus)**2 + sech(plus)**2)
-                                                - 2*(np.tanh(minus) + np.tanh(plus)))
+            return h**2*sigma*k**3/(4*e**3*np.pi) * (e * beta * (sech(minus)**2 + sech(plus)**2)
+                                                     - 2*(np.tanh(minus) + np.tanh(plus)))
         case 2:
             # for (2+1)
-            return sigma*k**4/(8*e**3*np.pi) * (e * beta * (sech(minus)**2 + sech(plus)**2)
-                                                - 2*(np.tanh(minus) + np.tanh(plus)))
+            return h**2*sigma*k**4/(8*e**3*np.pi) * (e * beta * (sech(minus)**2 + sech(plus)**2)
+                                                     - 2*(np.tanh(minus) + np.tanh(plus)))
 
 
 @njit(cache=True)

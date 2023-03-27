@@ -37,7 +37,6 @@ def f(t, u, mean_field_flag, Q, S, Lambda, grid, dx_direct, dx_half, c_0, c_1, c
     *args = (Lambda, mean_field_flag, console_logging_flag, grid, dx_direct,
       dx_half, c_0, c_1, c_2, mu, beta, N_Flavor, spatial_dimension, time_start, kir, iterations,)
     """
-
     k = Lambda * np.exp(-t)
 
     diffusion = compute_diffusion(
@@ -59,7 +58,10 @@ def f(t, u, mean_field_flag, Q, S, Lambda, grid, dx_direct, dx_half, c_0, c_1, c
 
 
 class Flow():
-    def __init__(self, spatial_dimension, Lambda, kir, grid, mu, T, filename=None, initial_condition=None, Q=None, S=None, args=(), save_flow_flag=False, console_logging=False, number_of_observables=None, tolerance=1e-12):
+    def __init__(self, Lambda, kir, grid, mu, T, filename=None,
+                 initial_condition=None, Q=None, S=None, args=(),
+                 save_flow_flag=False, console_logging=False,
+                 number_of_observables=None, tolerance=1e-12, file_attributes={}):
         self.Lambda = Lambda
         self.kir = kir
 
@@ -67,7 +69,6 @@ class Flow():
 
         self.grid = grid
 
-        self.spatial_dimension = spatial_dimension
         self.u_init = initial_condition(
             self.grid.sigma, *self.function_args)
         self.mu = mu
@@ -87,6 +88,7 @@ class Flow():
         self.c_0, self.c_1, self.c_2 = self.grid.compute_extrapolation_factors()
 
         self.filename = filename
+        self.file_attributes = file_attributes
 
     def __str__(self):
         return str(self.grid)
@@ -161,7 +163,14 @@ class Flow():
                     # NOTE: remember that you have coosen mass square from the next interval
                     massSquare = (y[i+2] - y[i+1])/(grid[i+2] - grid[i+1])
 
-        return {"sigma": current_root, "massSquare": massSquare, "first_div": first_div, "third_div": third_div, "pressure": - current_root_value, "t": t, "k": self.k(t), "y": y}
+        k = self.k(t)
+        return {"sigma": current_root, "massSquare": massSquare, "first_div": first_div, "third_div": third_div,
+                "pressure": - current_root_value, "t": t, "k": k, "y": y,
+                "diffusion": compute_diffusion(k, y, self.mean_field_flag, self.Q, self.grid.sigma,
+                                               self.grid.dx_direct, self.grid.dx_half, self.c_0, self.c_1,
+                                               self.c_2, *self.function_args),
+                "source": self.S(
+                    k, self.grid.sigma, *self.function_args)}
 
     def get_observables_for_all_positions(self):
         self.observable_array = pd.DataFrame([self.get_observables_at_pos(
@@ -182,17 +191,18 @@ class Flow():
 
         with h5py.File(path_and_filename, "w") as f:
             f.attrs["sigmaMax"] = self.grid.sigma[-1]
-            # f.attrs["NFlavor"] = self.N_Flavor
             f.attrs["Lambda"] = self.Lambda
             f.attrs["kir"] = self.kir
             f.attrs["NGrid"] = len(self.grid.sigma)
-            f.attrs["mu"] = self.mu
-            f.attrs["T"] = self.T
             f.attrs["computation_time"] = self.time_elapsed
             f.attrs["tolerance"] = self.tolerance
-            f.attrs["spatial_dimension"] = self.spatial_dimension
             f.attrs["grid_style"] = type(self.grid).__name__
             f.attrs["extrapolation_order"] = self.grid.extrapolation
+            # TODO: include manual storage of additional attrs
+            for key, value in self.file_attributes.items():
+                f.attrs[key] = value
+
+            # create datasets and store them
             f.create_dataset("t", data=observables["t"])
             f.create_dataset("sigma", data=observables["sigma"])
             f.create_dataset("massSquare", data=observables["massSquare"])
@@ -201,6 +211,7 @@ class Flow():
             f.create_dataset("pressure", data=observables["pressure"])
             f.create_dataset("k", data=observables["k"])
 
+            # create additional datasets and store them
             if self.save_flow_flag:
                 f.create_dataset("grid", data=self.grid.sigma)
                 y_dset = f.create_dataset("y", (observables["y"].to_numpy().shape[0], len(
@@ -213,22 +224,22 @@ class Flow():
                 for i, elem in enumerate(observables["y"].to_numpy()):
                     y_dset[i, :] = elem[:]
                     k = observables["k"][i]
-                    Q_dset[i, :] = compute_diffusion(k, elem[:], self.mean_field_flag, self.Q, self.grid.sigma,
-                                                     self.grid.dx_direct, self.grid.dx_half, self.c_0, self.c_1, self.c_2, *self.function_args)
-                    S_dset[i, :] = self.S(
-                        k, self.grid.sigma, *self.function_args)
+                    Q_dset[i, :] = observables["diffusion"][i]
+                    S_dset[i, :] = observables["source"][i]
+
+        return path_and_filename
 
 
 def main():
-    spatial_dimension = 1
-    Lambda = 1e5
+    spatial_dimension = 2
+    Lambda = 100
     kir = 1e-4
     n_flavor = 2
     # n_flavor = np.Inf
     mu = 0.0
-    T = 0.3
+    T = 0.1
     path = './'
-    tolerance = 1e-10
+    tolerance = 1e-12
 
     # configure spatial domain
     n_grid = 1000
@@ -238,11 +249,13 @@ def main():
 
     args = int_fun.generate_args(spatial_dimension, Lambda, mu, T, n_flavor)
 
+    storage_dict = int_fun.storage_dictionary(*args)
+
     filename = int_fun.generate_filename(
         mu, T, sigma_max, n_grid, kir, tolerance, *args)
 
-    flow = Flow(spatial_dimension, Lambda, kir, grid, mu, T, filename=filename, initial_condition=int_fun.initial_condition, Q=int_fun.Q, S=int_fun.S,
-                args=args, save_flow_flag=True, console_logging=True, number_of_observables=100, tolerance=tolerance)
+    flow = Flow(Lambda, kir, grid, mu, T, filename=filename, initial_condition=int_fun.initial_condition, Q=int_fun.Q, S=int_fun.S,
+                args=args, save_flow_flag=True, console_logging=True, number_of_observables=100, tolerance=tolerance, file_attributes=storage_dict)
     print(flow)
 
     flow.compute()
