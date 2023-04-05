@@ -1,6 +1,9 @@
 *.hdf5
 
+.idea
+
 log/*
-tasks
+
+build
 
 __pycache__

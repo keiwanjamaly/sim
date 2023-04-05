@@ -22,32 +22,32 @@ def storage_dictionary(spatial_dimension, Lambda, mu, beta, n_flavor, h, sigma_0
             "sigma_0": sigma_0}
 
 
-@njit(cache=True)
+@njit()
 def sech(x):
     return 1/np.cosh(x)
 
 
-@njit(cache=True)
+@njit()
 def csch(x):
     return 1/np.sinh(x)
 
 
-@njit(cache=True)
+@njit()
 def e_f(k, sigma, h):
     return np.sqrt(k**2 + (h*sigma)**2)
 
 
-@njit(cache=True)
+@njit()
 def e_b(k, u_x):
     return np.sqrt(k**2 + u_x)
 
 
-@njit(cache=True)
+@njit()
 def n_f(x):
     return 1/(np.exp(x) + 1)
 
 
-@njit(cache=True)
+@njit()
 def n_b(x):
     return 1/(np.exp(x) - 1)
 
@@ -92,7 +92,7 @@ def get_T(*args):
     return args[7]
 
 
-@njit(cache=True)
+@njit()
 def initial_condition(grid, *args):
     spatial_dimension = get_spatial_dimension(*args)
     Lambda = get_lambda(*args)
@@ -111,7 +111,7 @@ def initial_condition(grid, *args):
             return intermediate*grid*h**2
 
 
-@njit(cache=True)
+@njit()
 def S(k, sigma, *args):
     spatial_dimension = get_spatial_dimension(*args)
     mu = get_spatial_mu(*args)
@@ -132,7 +132,7 @@ def S(k, sigma, *args):
                                                      - 2*(np.tanh(minus) + np.tanh(plus)))
 
 
-@njit(cache=True)
+@njit()
 def Q(k, ux, *args):
     spatial_dimension = get_spatial_dimension(*args)
     beta = get_beta(*args)

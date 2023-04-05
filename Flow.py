@@ -11,7 +11,7 @@ from numba import njit, objmode
 import timeit
 
 
-@njit(cache=True)
+@njit()
 def compute_diffusion(k, u, mean_field_flag, Q, grid, dx_direct, dx_half, c_0, c_1, c_2, *args):
     if mean_field_flag:
         return np.zeros_like(grid)
@@ -30,7 +30,7 @@ def compute_diffusion(k, u, mean_field_flag, Q, grid, dx_direct, dx_half, c_0, c
         return (Q_cal[1:] - Q_cal[:-1])/dx_half
 
 
-@njit(cache=True)
+@njit()
 def f(t, u, mean_field_flag, Q, S, Lambda, grid, dx_direct, dx_half, c_0, c_1, c_2, console_logging_flag, time_start, tir, iterator, *args):
     """
     The *args conventions are as follows
@@ -58,7 +58,7 @@ def f(t, u, mean_field_flag, Q, S, Lambda, grid, dx_direct, dx_half, c_0, c_1, c
 
 
 class Flow():
-    def __init__(self, Lambda, kir, grid, mu, T, filename=None,
+    def __init__(self, Lambda, kir, grid, filename=None,
                  initial_condition=None, Q=None, S=None, args=(),
                  save_flow_flag=False, console_logging=False,
                  number_of_observables=None, tolerance=1e-12, file_attributes={}):
@@ -71,9 +71,6 @@ class Flow():
 
         self.u_init = initial_condition(
             self.grid.sigma, *self.function_args)
-        self.mu = mu
-        self.T = T
-        self.beta = 1/T
         self.S = S
         self.Q = Q
         self.mean_field_flag = Q is None
@@ -119,7 +116,7 @@ class Flow():
 
         if self.solution.status != 0:
             raise RuntimeError(
-                f'Incomplete flow for mu={self.mu}, T={self.T}, sigmaMax={self.grid[-1]}, Lambda={self.Lambda}, N={len(self.grid.sigma)}\nSolution broke at t={self.solution.t[-1]} ({self.k(self.solution.t[-1])})')
+                f'Incomplete flow for sigmaMax={self.grid[-1]}, Lambda={self.Lambda}, N={len(self.grid.sigma)}\nSolution broke at t={self.solution.t[-1]} ({self.k(self.solution.t[-1])})')
         else:
             print(
                 f'    Integration done from 0 ({self.Lambda:.1e}) to {self.solution.t[-1]:.3f} ({self.k(self.solution.t[-1]):.1e}); time elapsed = {self.time_elapsed:.2f} seconds')

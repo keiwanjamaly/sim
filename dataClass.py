@@ -10,32 +10,57 @@ class FlowData:
 
     def __enter__(self):
         self.file = h5py.File(self.file_name, 'r')
-        self.Lambda = self.file.attrs["Lambda"]
-        self.N_flavor = self.file.attrs["NFlavor"]
-        self.mu = self.file.attrs["mu"]
-        self.T = self.file.attrs["T"]
-        self.N_grid = self.file.attrs["NGrid"]
-        self.sigma_max = self.file.attrs["sigmaMax"]
-        self.spatial_dimension = self.file.attrs["spatial_dimension"]
-        self.extrapolation = "linear" if self.file.attrs["extrapolation_order"] == 1 else "quadratic"
-        self.computation_time = self.file.attrs["computation_time"]
+        self.keys = self.file.attrs.keys()
+        self.obj = {}
+        for key, item in self.file.attrs.items():
+            self.obj[key] = item
+        # print(self.obj)
+        # self.Lambda = self.file.attrs["Lambda"]
+        # self.N_flavor = self.file.attrs["NFlavor"]
+        # self.mu = self.file.attrs["mu"]
+        # self.T = self.file.attrs["T"]
+        # self.NGrid = self.file.attrs["NGrid"]
+        # self.sigmaMax = self.file.attrs["sigmaMax"]
+        # self.spatial_dimension = self.file.attrs["spatial_dimension"]
+        # self.extrapolation_order = "linear" if self.file.attrs["extrapolation_order"] == 1 else "quadratic"
+        # self.computation_time = self.file.attrs["computation_time"]
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        del self.file
+        if exc_type is not None:
+            print(f"An error occurred: {exc_type} - {exc_val}")
+        self.file.close()
+
+    def create_parameter_list(self):
+        main_list = [f'Λ = {self.obj["Lambda"]:.1e} -> {self.obj["kir"]:.1e}',
+                     f'NGrid = {self.obj["NGrid"]}',
+                     f'sigma_max = {self.obj["sigmaMax"]:.1f}',
+                     f'tolerances = {self.obj["tolerance"]}',
+                     f'time = {self.obj["computation_time"]:.2f}']
+
+        parameter_list = []
+        # append the other parameters in self.obj
+        for key, item in self.obj.items():
+            if key not in ["Lambda", "kir", "NGrid", "sigmaMax", "computation_time", "tolerance"]:
+                # if item is a float, round it to 2 digits
+                if isinstance(item, float):
+                    parameter_list.append(f'{key} = {item:.2f}')
+                else:
+                    parameter_list.append(f'{key} = {item}')
+
+        return main_list, parameter_list
 
     def __str__(self) -> str:
-        print_list = [f'Λ = {self.Lambda:.1e} -> {self.file.attrs["kir"]:.1e}',
-                      f'N_f = {self.N_flavor}',
-                      f'NGrid = {self.file.attrs["NGrid"]}; sigma_max = {self.file.attrs["sigmaMax"]}',
-                      f'mu, T = {self.mu}, {self.T}',
-                      f'tolerances = {self.N_grid}; time = {self.file.attrs["computation_time"]:.2f}']
-        return '\n'.join(print_list)
+        # use the create_parameter_list method to create a string
+        main_list, parameter_list = self.create_parameter_list()
+        # join both lists, that the main_list is on top and the parameter_list below and return the string
+        main_list_print = '; '.join(main_list)
+        parameter_list_print = '; '.join(parameter_list)
+        return f'{main_list_print}\nAdditional parameters: {parameter_list_print}'
 
     def enter_plot_title(self, fig: Figure):
-        fig.suptitle(r'$N_f='+f'{self.N_flavor}'+r'\quad$' +
-                     r'$\mu=' + f'{self.mu}' + r'\quad$' +
-                     r'$T=' + f'{self.T}' + r'$;' + f'\nspatial dimension = {self.spatial_dimension}, extrapolation = {self.extrapolation}')
+        # set the suptitle of the figure using the __str__ method
+        fig.suptitle(self.__str__())
 
     def plot_Q(self, ax: plt.Axes, part="Q"):
         x = self.file["grid"]
@@ -57,7 +82,7 @@ class FlowData:
         ax.plot((x[:-1] + x[1:])/2, np.ediff1d(x))
         ax.set_xlabel(r'$\sigma$')
         ax.set_title(
-            f'Cell spacing across grid\nfor {self.N_grid} cells in total.')
+            f'Cell spacing across grid\nfor {self.obj["NGrid"]} cells in total.')
 
     def plot_max_Q_of_x(self, ax: plt.Axes, label="", color=None):
         max_Q = np.empty_like(self.file["grid"])
@@ -86,7 +111,7 @@ class FlowData:
         ax.legend()
 
     def add_massSquare_at_pos(self, ax: plt.Axes, pos=-1, color=None):
-        ax.scatter([self.sigma_max], [
+        ax.scatter([self.sigmaMax], [
                    self.file["massSquare"][pos]], color=color, s=10)
         ax.set_xlabel(r'$\sigma_{max}$')
         ax.set_ylabel(r'$m_{\sigma}^2$')
