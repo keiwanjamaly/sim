@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "cmath": "c",
+        "complex": "c",
+        "numbers": "c"
+    }
+}
