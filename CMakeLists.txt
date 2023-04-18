@@ -23,17 +23,15 @@
 
 # target_link_libraries(sim SUNDIALS::cvode m)
 
-
 cmake_minimum_required(VERSION 3.22)
 
-project(libsim LANGUAGES C)
+project(grid_tests LANGUAGES C)
 
 set(CMAKE_C_STANDARD 11)
 
-# Include the Unity test framework
-add_subdirectory(Unity)
+# Find the Unity test framework
+find_package(Unity REQUIRED)
 
 # Add source and test directories
 add_subdirectory(src)
 add_subdirectory(tests)
-
