@@ -3,6 +3,7 @@ set(TEST_SOURCES
   all_tests.c
   test_grid.c
   test_return_data.c
+  test_computation_data.c
 )
 
 # Create the test executable

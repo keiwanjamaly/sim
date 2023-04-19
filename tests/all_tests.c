@@ -5,6 +5,7 @@ static void RunAllTests(void)
     // Add calls to RUN_TEST_GROUP() for each test group here
     RUN_TEST_GROUP(GridTests);
     RUN_TEST_GROUP(ReturnDataTests);
+    RUN_TEST_GROUP(ComputationDataTests);
 }
 
 int main(int argc, const char *argv[])

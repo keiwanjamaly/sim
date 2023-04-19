@@ -3,10 +3,10 @@
 
 #include "computation_data.h"
 
-struct computation_data *initialize_computation_data(double Lambda, double kir, struct grid *computation_grid,
-                                                     struct physics_data *data, double tolerances)
+ComputationData *initialize_computation_data(double Lambda, double kir, Grid *computation_grid,
+                                             PhysicsData *data, double tolerances)
 {
-    struct computation_data *new_computation_data = malloc(sizeof(struct computation_data));
+    ComputationData *new_computation_data = (ComputationData *)malloc(sizeof(ComputationData));
     new_computation_data->Lambda = Lambda;
     new_computation_data->kir = kir;
     new_computation_data->tir = -log(kir / Lambda);
@@ -17,7 +17,7 @@ struct computation_data *initialize_computation_data(double Lambda, double kir, 
     return new_computation_data;
 }
 
-void free_computation_data(struct computation_data *computation_data_to_be_freed)
+void destroy_computation_data(ComputationData *computation_data_to_be_freed)
 {
     free(computation_data_to_be_freed);
 }

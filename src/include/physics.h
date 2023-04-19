@@ -6,6 +6,8 @@
 
 struct physics_data;
 
+typedef struct physics_data PhysicsData;
+
 // Diffusion Flux (t, k, ux)
 double Q(double t, double k, double ux, struct physics_data *data);
 
