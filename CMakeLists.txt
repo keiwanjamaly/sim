@@ -23,12 +23,20 @@
 
 # target_link_libraries(sim SUNDIALS::cvode m)
 
-cmake_minimum_required(VERSION 3.22)
-
-project(grid_tests LANGUAGES C)
+cmake_minimum_required(VERSION 3.14)
+project(my_project)
 
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Add source and test directories
+# Enable double assertions
+find_package(unity REQUIRED)
+
+# Include directories
+include_directories(src)
+
+# Add subdirectories
 add_subdirectory(src)
 add_subdirectory(tests)
+
+

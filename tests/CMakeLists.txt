@@ -1,17 +1,17 @@
-add_executable(test_runner all_tests.c test_grid.c)
-
-# Add Unity header directories
-target_include_directories(test_runner PRIVATE
-    /usr/local/include/unity
-    /usr/local/include/unity/extras/fixture/src
-    /usr/local/include/unity/extras/memory/src
+# Add your test files here
+set(TEST_SOURCES
+  all_tests.c
+  test_grid.c
+  test_return_data.c
 )
 
-# Add the UNITY_EXTENSION_FIXTURE and UNITY_DOUBLE_PRECISION definitions
-target_compile_definitions(test_runner PRIVATE UNITY_EXTENSION_FIXTURE=1)
+# Create the test executable
+add_executable(run_tests ${TEST_SOURCES})
 
-# Link libraries
-target_link_libraries(test_runner PRIVATE grid_code /usr/local/lib/libunity.a)
+# target_compile_definitions(run_tests PUBLIC UNITY_INCLUDE_DOUBLE)
 
-# Add a custom command to run the tests after building
-add_custom_command(TARGET test_runner POST_BUILD COMMAND test_runner)
+# Link Unity to the test executable
+target_link_libraries(run_tests unity::framework libsim)
+
+# target_include_directories(run_tests unity)
+# target_include_directories(run_tests PUBLIC ${UNITY_INCLUDE_DIRS})
