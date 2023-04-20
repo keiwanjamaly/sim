@@ -40,7 +40,6 @@ void add_diffusion(double t, double k, double *grid, double *u, double *u_dot, i
     for (int i = 1; i < N; i++)
     {
         u_x[i] = (u[i] - u[i - 1]) / dx[i];
-        // printf("%f\n", u_x[i]);
     }
     // handle right boundary
     u_boundary = right_boundary(input_data->computation_grid, u, input_data->data);
@@ -48,12 +47,6 @@ void add_diffusion(double t, double k, double *grid, double *u, double *u_dot, i
 
     for (int i = 0; i < N + 1; i++)
     {
-        if (isnan(u_x[i]))
-        {
-            printf("\nnan at i=%d\n", i);
-            exit(-1);
-        }
-        printf("\n i = %d, u_x = %f, dx = %f\n", i, u_x[i], dx[i]);
         Q_cal[i] = Q(t, k, u_x[i], input_data->data);
     }
 
@@ -109,8 +102,7 @@ void log_line(double t, double k, double tir, double t_elapsed)
 
 void compute(struct computation_data *data, struct return_data *return_struct)
 {
-    printf("Compuddin\n");
-    sunindextype steps_to_save = return_struct->samples;
+    int steps_to_save = return_struct->samples;
     double t_final = data->tir;
     double t_out;
     double t_now = 0.0;
@@ -128,8 +120,12 @@ void compute(struct computation_data *data, struct return_data *return_struct)
     u_out = N_VNew_Serial(data->computation_grid->N, sunctx);
     u0 = N_VNew_Serial(data->computation_grid->N, sunctx);
     double *u0_c_pointer = N_VGetArrayPointer(u0);
+    double *u_output_pointer = N_VGetArrayPointer(u_out);
     for (int i = 0; i < data->computation_grid->N; i++)
+    {
         u0_c_pointer[i] = initial_condition(data->computation_grid->grid_points[i], data->data);
+        u_output_pointer[i] = u0_c_pointer[i];
+    }
 
     package_mem = CVodeCreate(CV_BDF, sunctx);
 
@@ -143,7 +139,6 @@ void compute(struct computation_data *data, struct return_data *return_struct)
     }
 
     // set user data
-    // ERKStepSetUserData(m_erk_mem, (void *) m_config.get())
     CVodeSetUserData(package_mem, data);
 
     CVodeSStolerances(package_mem, reltol, abstol);
@@ -156,20 +151,28 @@ void compute(struct computation_data *data, struct return_data *return_struct)
 
     CVodeSetLinearSolver(package_mem, lin_sol, jacobi_matrix);
 
+    CVodeSetErrFile(package_mem, NULL);
+
     clock_t start_clock = clock();
     log_line(t_now, cal_k(t_now, data), data->tir, compute_time_from_start(start_clock));
 
-    // sovle shit
+    // solve shit
+    double left_point, right_point;
+    // save zeroth step
+    left_point = left_boundary(data->computation_grid, u_output_pointer, data->data);
+    right_point = right_boundary(data->computation_grid, u_output_pointer, data->data);
+    save_step(return_struct, 0, u_output_pointer, t_now, left_point, right_point);
     for (int i = 1; i < steps_to_save; i++)
     {
         t_out = dt * i;
-        do
+        status = CV_TOO_MUCH_WORK;
+        while (t_now < t_out && status == CV_TOO_MUCH_WORK)
         {
             status = CVode(package_mem, t_out, u_out, &t_now, CV_NORMAL);
-            // printf("t_out = %f, t_now = %f, status = %d\n", t_out, t_now, status);
             delete_previous_line();
             log_line(t_now, cal_k(t_now, data), data->tir, compute_time_from_start(start_clock));
-        } while (status == CV_TOO_MUCH_WORK);
+        }
+
         if (status != CV_SUCCESS)
         {
             delete_previous_line();
@@ -177,14 +180,13 @@ void compute(struct computation_data *data, struct return_data *return_struct)
             exit(-1);
         }
         // save after each step
-        double *u_output_pointer = N_VGetArrayPointer(u_out);
-        double left_point = left_boundary(data->computation_grid, u_output_pointer, data->data);
-        double right_point = right_boundary(data->computation_grid, u_output_pointer, data->data);
+        left_point = left_boundary(data->computation_grid, u_output_pointer, data->data);
+        right_point = right_boundary(data->computation_grid, u_output_pointer, data->data);
         save_step(return_struct, i, u_output_pointer, t_now, left_point, right_point);
     }
 
     delete_previous_line();
-    printf("Computation done in %.1f seconds", compute_time_from_start(start_clock));
+    printf("Computation done in %.1f seconds                           ", compute_time_from_start(start_clock));
 
     // Free stuff
     N_VDestroy(u0);

@@ -10,9 +10,9 @@
 
 # set(CMAKE_C_STANDARD 11)
 
-# find_package(SUNDIALS REQUIRED)
+find_package(SUNDIALS REQUIRED)
 
-# set(MODEL_FILE "gross_neveu.c" CACHE STRING "" FORCE)
+set(MODEL_FILE "gross_neveu.c" CACHE STRING "" FORCE)
 
 # add_library(sim SHARED
 #         c_code/computation_library.c

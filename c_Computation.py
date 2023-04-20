@@ -19,7 +19,7 @@ class Computation_Interface(Structure):
 
 def main():
 
-    lib = CDLL("./build/libsim.so")
+    lib = CDLL("./build/src/libsim.dylib")
 
     sigma_max = 10
     N_Grid = 11

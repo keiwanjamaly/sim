@@ -29,7 +29,6 @@ class Gross_Neveu_Interface():
         self.free_physics_data.restype = None
 
     def __del__(self):
-        print("freeing gross_neveu")
         self.free_physics_data(self.physics_data_pointer)
 
     @property

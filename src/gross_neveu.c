@@ -63,17 +63,21 @@ double initial_condition(double x, struct physics_data *data)
     if (d == 1)
     {
         tmp = 1 / sqrt(1.0 + pow(h * sigma_0 / Lambda, 2));
-        return d_gamma * (pow(h, 2) * x / M_PI) * (atanh(tmp) - tmp);
+        return d_gamma * (pow(h, 2) * x / (2 * M_PI)) * (atanh(tmp) - tmp);
     }
     else if (d == 2)
     {
-        tmp = pow(h * sigma_0, 2) + pow(Lambda, 2);
-        // TODO: check if a d_gamma needs to be inserted here
-        return (2 * tmp - 2 * h * sigma_0 * sqrt(tmp)) / (2 * M_PI * sqrt(tmp)) * x * pow(h, 2);
+        tmp = sqrt(pow(h * sigma_0, 2) + pow(Lambda, 2));
+        tmp = ((double)d_gamma) * (pow(Lambda, 2) + 2.0 * h * sigma_0 * (h * sigma_0 - tmp)) / (8.0 * M_PI * tmp);
+        return tmp * pow(h, 2) * x;
+    }
+    else
+    {
+        exit(-1);
     }
 }
 
-inline double sech(double x)
+double sech(double x)
 {
     return 1 / cosh(x);
 }
@@ -88,12 +92,12 @@ double e_f(double k, double x)
     return sqrt(pow(k, 2) + pow(x, 2));
 }
 
-inline double n_b(double x)
+double n_b(double x)
 {
     return 1 / expm1(x); // expm1 = exp - 1
 }
 
-inline double n_f(double x)
+double n_f(double x)
 {
     return 1 / (exp(x) + 1);
 }
@@ -110,13 +114,7 @@ double Q(double t, double k, double ux, struct physics_data *data)
     double one_over_N = data->one_over_N;
 
     double return_value = -A_d *
-                          one_over_N * pow(k, d + 2) * (1 + 2 * n_b(beta * e)) / (2 * e);
-    // printf("%f\t%f\n", ux, return_value);
-    if (isnan(return_value))
-    {
-        printf("\nnan occured ! with k=%f, ux=%f\n", k, ux);
-        exit(-1);
-    }
+                          one_over_N * pow(k, d + 2) * (1 + 2 * n_b(beta * e)) / (2.0 * e);
     return return_value;
 }
 
@@ -137,18 +135,18 @@ double S(double t, double k, double x, struct physics_data *data)
     double n_f_plus = n_f(plus_mu_exponent);
     double n_f_minus = n_f(minus_mu_exponent);
 
-    double tmp = n_f_plus + n_f_minus - 1 + beta * e * (pow(sech(plus_mu_exponent * 0.5), 2) + pow(sech(minus_mu_exponent * 0.5), 2));
+    double tmp = n_f_plus + n_f_minus - 1 + 0.25 * beta * e * (pow(sech(plus_mu_exponent * 0.5), 2) + pow(sech(minus_mu_exponent * 0.5), 2));
 
-    double return_value = pow(h * sigma_0, 2) * pow(k, d + 2) * A_d * d_gamma * (tmp) / 2 * pow(e, 3);
+    double return_value = x * pow(h, 2) * pow(k, d + 2) * A_d * d_gamma * (tmp) / (2.0 * pow(e, 3));
 
     return return_value;
 }
 
-double left_boundary(struct grid *, double *u, struct physics_data *data)
+double left_boundary(Grid *_, double *u, PhysicsData *data)
 {
     return 0;
 }
-double right_boundary(struct grid *computation_grid, double *u, struct physics_data *data)
+double right_boundary(Grid *computation_grid, double *u, PhysicsData *data)
 {
     int N = computation_grid->N;
     return 2 * u[N - 1] - u[N - 2];

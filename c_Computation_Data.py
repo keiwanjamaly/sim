@@ -23,13 +23,12 @@ class Computation_Data_Interface():
         self.computation_data_pointer = self.initialize_computation_data(
             Lambda, kir, grid, physics_data, tolerances)
 
-        self.free_computation_data = lib.free_computation_data
-        self.free_computation_data.argtypes = [POINTER(Computation_Data)]
-        self.free_computation_data.restype = None
+        self.destroy_computation_data = lib.destroy_computation_data
+        self.destroy_computation_data.argtypes = [POINTER(Computation_Data)]
+        self.destroy_computation_data.restype = None
 
     def __del__(self):
-        print("freeing computation_data")
-        self.free_computation_data(self.computation_data_pointer)
+        self.destroy_computation_data(self.computation_data_pointer)
 
     @property
     def pointer(self):
