@@ -1,7 +1,5 @@
 *.hdf5
 
-.idea
-
 log/*
 
 build
