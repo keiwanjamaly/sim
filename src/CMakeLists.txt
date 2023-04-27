@@ -3,9 +3,19 @@ set(LIBRARY_SOURCES
   return_data.c
   computation_data.c
   computation_library.c
-  ${MODEL_FILE}
 )
 
-add_library(sim SHARED ${LIBRARY_SOURCES})
+add_library(sim STATIC ${LIBRARY_SOURCES})
 target_link_libraries(sim SUNDIALS::cvode m)
 target_include_directories(sim PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+file(GLOB MODELS ${CMAKE_CURRENT_SOURCE_DIR}/models/*)
+foreach(FILE ${MODELS})
+  get_filename_component(FILENAME ${FILE} NAME)
+  get_filename_component(LIBNAME ${FILE} NAME_WE)
+  message("File: ${FILENAME}")
+  message("Libname: lib${LIBNAME}")
+  add_library(${LIBNAME} SHARED ${CMAKE_CURRENT_SOURCE_DIR}/models/${FILENAME} ${LIBRARY_SOURCES})
+  target_link_libraries(${LIBNAME} SUNDIALS::cvode m)
+  target_include_directories(${LIBNAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+endforeach()

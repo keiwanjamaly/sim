@@ -97,7 +97,7 @@ void delete_previous_line()
 
 void log_line(double t, double k, double tir, double t_elapsed)
 {
-    printf("%.2f (%.4e)/%.2f - Runtime: %.1f seconds", t, k, tir, t_elapsed);
+    printf("%.2f (%.4e)/%.2f - Runtime: %.1f seconds\n", t, k, tir, t_elapsed);
 }
 
 void compute(struct computation_data *data, struct return_data *return_struct)
@@ -169,13 +169,13 @@ void compute(struct computation_data *data, struct return_data *return_struct)
         while (t_now < t_out && status == CV_TOO_MUCH_WORK)
         {
             status = CVode(package_mem, t_out, u_out, &t_now, CV_NORMAL);
-            delete_previous_line();
+            // delete_previous_line();
             log_line(t_now, cal_k(t_now, data), data->tir, compute_time_from_start(start_clock));
         }
 
         if (status != CV_SUCCESS)
         {
-            delete_previous_line();
+            // delete_previous_line();
             printf("Error: something went wrong! CVODE error code %d\n", status);
             exit(-1);
         }
@@ -185,7 +185,7 @@ void compute(struct computation_data *data, struct return_data *return_struct)
         save_step(return_struct, i, u_output_pointer, t_now, left_point, right_point);
     }
 
-    delete_previous_line();
+    // delete_previous_line();
     printf("Computation done in %.1f seconds                           ", compute_time_from_start(start_clock));
 
     // Free stuff

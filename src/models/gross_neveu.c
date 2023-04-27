@@ -8,7 +8,7 @@ struct physics_data
 {
     double Lambda;
     double h;
-    double sigma_0;
+    double one_over_g2;
     int dimension;
     int dimension_gamma;
     double A_d;
@@ -108,7 +108,6 @@ double Q(double t, double k, double ux, struct physics_data *data)
     int d_gamma = data->dimension_gamma;
     double A_d = data->A_d;
     double h = data->h;
-    double sigma_0 = data->sigma_0;
     double e = e_b(k, ux);
     double beta = data->beta;
     double one_over_N = data->one_over_N;

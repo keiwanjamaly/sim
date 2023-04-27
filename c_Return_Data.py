@@ -26,9 +26,6 @@ class Return_Data_Interface():
         self.grid_generated = False
         self.solution_generated = False
 
-    # def get_data():
-    #     self.return_data_pointer
-
     def __del__(self):
         self.destroy_return_data(self.return_data_pointer)
 
