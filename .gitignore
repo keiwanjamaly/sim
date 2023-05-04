@@ -5,3 +5,5 @@ log/*
 build
 
 __pycache__
+
+.cache

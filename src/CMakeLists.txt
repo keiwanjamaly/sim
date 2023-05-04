@@ -3,6 +3,7 @@ set(LIBRARY_SOURCES
   return_data.c
   computation_data.c
   computation_library.c
+  helpers.c
 )
 
 add_library(sim STATIC ${LIBRARY_SOURCES})

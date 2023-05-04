@@ -154,7 +154,7 @@ void compute(struct computation_data *data, struct return_data *return_struct)
     CVodeSetErrFile(package_mem, NULL);
 
     clock_t start_clock = clock();
-    log_line(t_now, cal_k(t_now, data), data->tir, compute_time_from_start(start_clock));
+    // log_line(t_now, cal_k(t_now, data), data->tir, compute_time_from_start(start_clock));
 
     // solve shit
     double left_point, right_point;
@@ -170,7 +170,7 @@ void compute(struct computation_data *data, struct return_data *return_struct)
         {
             status = CVode(package_mem, t_out, u_out, &t_now, CV_NORMAL);
             // delete_previous_line();
-            log_line(t_now, cal_k(t_now, data), data->tir, compute_time_from_start(start_clock));
+            // log_line(t_now, cal_k(t_now, data), data->tir, compute_time_from_start(start_clock));
         }
 
         if (status != CV_SUCCESS)
@@ -186,7 +186,7 @@ void compute(struct computation_data *data, struct return_data *return_struct)
     }
 
     // delete_previous_line();
-    printf("Computation done in %.1f seconds                           ", compute_time_from_start(start_clock));
+    // printf("Computation done in %.1f seconds                           ", compute_time_from_start(start_clock));
 
     // Free stuff
     N_VDestroy(u0);
@@ -195,5 +195,5 @@ void compute(struct computation_data *data, struct return_data *return_struct)
     SUNLinSolFree(lin_sol);
     CVodeFree(&package_mem);
     SUNContext_Free(&sunctx);
-    printf("\n");
+    // printf("\n");
 }

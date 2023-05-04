@@ -24,6 +24,7 @@ class Return_Data_Interface():
         self.destroy_return_data.restype = None
 
         self.grid_generated = False
+        self.time_generated = False
         self.solution_generated = False
 
     def __del__(self):
@@ -48,6 +49,14 @@ class Return_Data_Interface():
                 self.return_data_pointer.contents.grid[i] for i in range(self.grid_size)]
             self.grid_generated = True
         return self.generated_grid
+
+    @property
+    def time(self):
+        if not self.time_generated:
+            self.generated_time = [
+                self.return_data_pointer.contents.solution_time[i] for i in range(self.samples)]
+            self.time_generated = True
+        return self.generated_time
 
     @property
     def solution(self):
