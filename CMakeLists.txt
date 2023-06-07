@@ -2,13 +2,15 @@ cmake_minimum_required(VERSION 3.22)
 
 # project(dif_lib VERSION 1.0.0)
 
-set(SUNDIALS_INSTALL_PREFIX "~/install/sundials" CACHE PATH "" FORCE)
-set(UNITY_INSTALL_PREFIX "~/install/unity" CACHE PATH "" FORCE)
+set(SUNDIALS_INSTALL_PREFIX "~/install/sundials" CACHE PATH "")
+set(UNITY_INSTALL_PREFIX "~/install/unity" CACHE PATH "")
+set(LOG_LINE ON CACHE BOOL "")
 
 find_package(SUNDIALS REQUIRED)
 
 cmake_minimum_required(VERSION 3.14)
 project(my_project)
+
 
 set(CMAKE_CXX_STANDARD 17)
 # set(CMAKE_C_STANDARD 11)

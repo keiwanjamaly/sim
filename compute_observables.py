@@ -31,17 +31,13 @@ class Line:
 
 
 def get_sign_change_interval_u(u: np.ndarray) -> Tuple[int, int]:
-    sign_changes = np.where(np.diff(np.sign(u)) > 0)[0]
+    interval = (0, 1)
+    for i in range(1, len(u)):
+        if u[i - 1] < 0 and u[i] > 0:
+            interval = (i-1, i)
+            break
 
-    # Get the interval where the first sign change happens
-    if sign_changes.size > 0:
-        # The first sign change occurs between indices {interval_start} and {interval_end}.
-        interval_start = sign_changes[0]
-        interval_end = sign_changes[0] + 1
-        return (interval_start, interval_end)
-    else:
-        # There are no sign changes from negative to positive in the array
-        return (0, 1)
+    return interval
 
 
 def calculate_position_of_root(grid_points: np.ndarray, u: np.ndarray, interval: Tuple[int, int]) -> float:
@@ -104,6 +100,10 @@ def get_potential_at_interval_from_u(grid_points: np.ndarray, u: np.ndarray, int
 
     area_till_bracketed = trapezoid(u[:lower_index], grid_points[:lower_index])
     return area_till_bracketed + first_triangle + last_triangle
+
+    # result = trapezoid(u[:lower_index], grid_points[:lower_index])
+    # print(result)
+    # return result
 
 
 def get_sigma_0(grid_points: np.ndarray, u: np.ndarray, interval: Tuple[float, float]) -> float:

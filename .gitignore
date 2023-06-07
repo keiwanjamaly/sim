@@ -7,3 +7,5 @@ build
 __pycache__
 
 .cache
+
+CMakeFiles
