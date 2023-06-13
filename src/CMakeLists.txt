@@ -1,9 +1,9 @@
 set(LIBRARY_SOURCES 
-  grid.c
-  return_data.c
-  computation_data.c
-  computation_library.c
-  helpers.c
+  grid.cpp
+  return_data.cpp
+  computation_data.cpp
+  computation_library.cpp
+  helpers.cpp
 )
 
 add_library(sim STATIC ${LIBRARY_SOURCES})
@@ -17,7 +17,7 @@ foreach(FILE ${MODELS})
   message("File: ${FILENAME}")
   message("Libname: lib${LIBNAME}")
   add_library(${LIBNAME} SHARED ${CMAKE_CURRENT_SOURCE_DIR}/models/${FILENAME} ${LIBRARY_SOURCES})
-  target_link_libraries(${LIBNAME} SUNDIALS::cvode m)
+  target_link_libraries(${LIBNAME} PUBLIC m SUNDIALS::cvode sim)
   target_include_directories(${LIBNAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
   if (${LOG_LINE})
       target_compile_definitions(${LIBNAME} PUBLIC LOG_LINE)

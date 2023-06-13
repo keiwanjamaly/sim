@@ -12,8 +12,8 @@ typedef struct return_data
     double *solution_time;
 } ReturnData;
 
-ReturnData *create_return_data(int, Grid *);
-void destroy_return_data(ReturnData *);
+extern "C" ReturnData *create_return_data(int, Grid *);
+extern "C" void destroy_return_data(ReturnData *);
 
 void save_step(ReturnData *return_data_to_be_saved_to, int index, double *y, double time, double left_point, double right_point);
 #endif

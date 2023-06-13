@@ -1,9 +1,9 @@
 # Add your test files here
 set(TEST_SOURCES
-  all_tests.c
-  test_grid.c
-  test_return_data.c
-  test_computation_data.c
+  all_tests.cpp
+  test_grid.cpp
+  test_return_data.cpp
+  test_computation_data.cpp
 )
 
 # Create the test executable

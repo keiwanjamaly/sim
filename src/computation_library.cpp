@@ -28,8 +28,8 @@ void add_diffusion(double t, double k, double *grid, double *u, double *u_dot,
   double u_boundary;
   double *dx = input_data->computation_grid->dx;
   double *dx_midpoints = input_data->computation_grid->dx_midpoints;
-  double *u_x = malloc((N + 1) * sizeof(double));
-  double *Q_cal = malloc((N + 1) * sizeof(double));
+  double *u_x = (double *) malloc((N + 1) * sizeof(double));
+  double *Q_cal = (double *) malloc((N + 1) * sizeof(double));
 
   // compute u_x
   // handle left boundary
@@ -56,26 +56,26 @@ void add_diffusion(double t, double k, double *grid, double *u, double *u_dot,
 }
 
 int f_without_diffusion(double t, N_Vector u, N_Vector udot, void *input_data) {
-  struct computation_data *user_data = input_data;
+  struct computation_data *user_data = (struct computation_data *) input_data;
   int N = user_data->computation_grid->N;
   double k = cal_k(t, user_data);
   double *grid = user_data->computation_grid->grid_points;
   double *udot_data = N_VGetArrayPointer(udot);
 
-  compute_source(t, k, grid, udot_data, N, input_data);
+  compute_source(t, k, grid, udot_data, N, user_data);
   return 0;
 }
 
 int f_with_diffusion(double t, N_Vector u, N_Vector udot, void *input_data) {
-  struct computation_data *user_data = input_data;
+  struct computation_data *user_data = (struct computation_data *)input_data;
   int N = user_data->computation_grid->N;
   double k = cal_k(t, user_data);
   double *grid = user_data->computation_grid->grid_points;
   double *udot_data = N_VGetArrayPointer(udot);
   double *u_data = N_VGetArrayPointer(u);
 
-  compute_source(t, k, grid, udot_data, N, input_data);
-  add_diffusion(t, k, grid, u_data, udot_data, N, input_data);
+  compute_source(t, k, grid, udot_data, N, user_data);
+  add_diffusion(t, k, grid, u_data, udot_data, N, user_data);
   return 0;
 }
 
@@ -89,7 +89,7 @@ void log_line(double t, double k, double tir, double t_elapsed) {
   printf("%.2f (%.4e)/%.2f - Runtime: %.1f seconds\n", t, k, tir, t_elapsed);
 }
 
-void compute(struct computation_data *data, struct return_data *return_struct) {
+extern "C" void compute(struct computation_data *data, struct return_data *return_struct) {
   int steps_to_save = return_struct->samples;
   double t_final = data->tir;
   double t_out;

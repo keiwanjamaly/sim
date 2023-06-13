@@ -3,7 +3,7 @@
 
 #include "computation_data.h"
 
-ComputationData *initialize_computation_data(double Lambda, double kir, Grid *computation_grid,
+extern "C" ComputationData *initialize_computation_data(double Lambda, double kir, Grid *computation_grid,
                                              PhysicsData *data, double tolerances)
 {
     ComputationData *new_computation_data = (ComputationData *)malloc(sizeof(ComputationData));
@@ -17,7 +17,7 @@ ComputationData *initialize_computation_data(double Lambda, double kir, Grid *co
     return new_computation_data;
 }
 
-void destroy_computation_data(ComputationData *computation_data_to_be_freed)
+extern "C" void destroy_computation_data(ComputationData *computation_data_to_be_freed)
 {
     free(computation_data_to_be_freed);
 }
