@@ -13,6 +13,6 @@
 
 GLFWwindow *setup_live_plotting();
 void tear_down_live_plotting(GLFWwindow *);
-void draw_frame(GLFWwindow *);
+void draw_frame(GLFWwindow *, double);
 
 #endif // !LIVE_PLOTTING_H

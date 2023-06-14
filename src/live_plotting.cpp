@@ -1,5 +1,6 @@
 #include "live_plotting.h"
 #include <filesystem>
+#include "implot.h"
 
 static void glfw_error_callback(int error, const char *description) {
   fprintf(stderr, "GLFW Error %d: %s\n", error, description);
@@ -78,7 +79,7 @@ void tear_down_live_plotting(GLFWwindow *window) {
   glfwTerminate();
 }
 
-void draw_frame(GLFWwindow *window) {
+void draw_frame(GLFWwindow *window, double time) {
   ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
   if (glfwWindowShouldClose(window))
     exit(1);
@@ -93,31 +94,13 @@ void draw_frame(GLFWwindow *window) {
   // and hide them from your application based on those two flags.
   glfwPollEvents();
 
-  // Start the Dear ImGui frame
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
-  // 2. Show a simple window that we create ourselves. We use a Begin/End pair
-  // to create a named window.
   {
-    static float f = 0.0f;
-    static int counter = 0;
-
-    ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!"
-                                   // and append into it.
-
-    ImGui::Text("This is some useful text."); // Display some text (you can
-                                              // use a format strings too)
-
-    ImGui::SliderFloat("float", &f, 0.0f,
-                       1.0f); // Edit 1 float using a slider from 0.0f to 1.0f
-    ImGui::ColorEdit3(
-        "clear color",
-        (float *)&clear_color); // Edit 3 floats representing a color
-
-    // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-    //             1000.0f / io.Framerate, io.Framerate);
+    ImGui::Begin("Simulation stats");
+    ImGui::Text("Current time is: %.3f", time);
     ImGui::End();
   }
 

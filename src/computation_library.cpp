@@ -131,7 +131,12 @@ extern "C" void compute(struct computation_data *data,
 
   CVodeSStolerances(package_mem, reltol, abstol);
 
+#ifdef ACTIVATE_LIVE_PLOTTING
+  CVodeSetMaxNumSteps(package_mem, 100);
+#endif // DEBUG
+#ifndef ACTIVATE_LIVE_PLOTTING
   CVodeSetMaxNumSteps(package_mem, 1000);
+#endif // !ACTIVATE_LIVE_PLOTTING
 
   jacobi_matrix = SUNBandMatrix(data->computation_grid->N, 1, 1, sunctx);
 
@@ -157,12 +162,11 @@ extern "C" void compute(struct computation_data *data,
     while (t_now < t_out && status == CV_TOO_MUCH_WORK) {
       status = CVode(package_mem, t_out, u_out, &t_now, CV_NORMAL);
 #ifdef ACTIVATE_LIVE_PLOTTING
-      draw_frame(window);
+      draw_frame(window, t_now);
 #endif // DEBUG
     }
 
     if (status != CV_SUCCESS) {
-      // delete_previous_line();
       printf("Error: something went wrong! CVODE error code %d\n", status);
       exit(-1);
     }
@@ -178,7 +182,7 @@ extern "C" void compute(struct computation_data *data,
   // destory plotting_library
 #ifdef ACTIVATE_LIVE_PLOTTING
   tear_down_live_plotting(window);
-#endif // DEBUG
+#endif
 
   // Free stuff
   N_VDestroy(u0);
