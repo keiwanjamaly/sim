@@ -9,6 +9,9 @@
 
 #include "computation_data.h"
 #include "grid.h"
+#ifdef ACTIVATE_LIVE_PLOTTING
+#include "live_plotting.h"
+#endif
 #include "physics.h"
 #include "return_data.h"
 
@@ -28,8 +31,8 @@ void add_diffusion(double t, double k, double *grid, double *u, double *u_dot,
   double u_boundary;
   double *dx = input_data->computation_grid->dx;
   double *dx_midpoints = input_data->computation_grid->dx_midpoints;
-  double *u_x = (double *) malloc((N + 1) * sizeof(double));
-  double *Q_cal = (double *) malloc((N + 1) * sizeof(double));
+  double *u_x = (double *)malloc((N + 1) * sizeof(double));
+  double *Q_cal = (double *)malloc((N + 1) * sizeof(double));
 
   // compute u_x
   // handle left boundary
@@ -56,7 +59,7 @@ void add_diffusion(double t, double k, double *grid, double *u, double *u_dot,
 }
 
 int f_without_diffusion(double t, N_Vector u, N_Vector udot, void *input_data) {
-  struct computation_data *user_data = (struct computation_data *) input_data;
+  struct computation_data *user_data = (struct computation_data *)input_data;
   int N = user_data->computation_grid->N;
   double k = cal_k(t, user_data);
   double *grid = user_data->computation_grid->grid_points;
@@ -83,13 +86,8 @@ double compute_time_from_start(clock_t start_clock) {
   return (double)(clock() - start_clock) / CLOCKS_PER_SEC;
 }
 
-void delete_previous_line() { printf("\33[2K\r"); }
-
-void log_line(double t, double k, double tir, double t_elapsed) {
-  printf("%.2f (%.4e)/%.2f - Runtime: %.1f seconds\n", t, k, tir, t_elapsed);
-}
-
-extern "C" void compute(struct computation_data *data, struct return_data *return_struct) {
+extern "C" void compute(struct computation_data *data,
+                        struct return_data *return_struct) {
   int steps_to_save = return_struct->samples;
   double t_final = data->tir;
   double t_out;
@@ -104,6 +102,11 @@ extern "C" void compute(struct computation_data *data, struct return_data *retur
   SUNMatrix jacobi_matrix;
   SUNLinearSolver lin_sol;
   SUNContext_Create(NULL, &sunctx);
+
+  // setup plotting library
+#ifdef ACTIVATE_LIVE_PLOTTING
+  GLFWwindow *window = setup_live_plotting();
+#endif // DEBUG
 
   u_out = N_VNew_Serial(data->computation_grid->N, sunctx);
   u0 = N_VNew_Serial(data->computation_grid->N, sunctx);
@@ -139,10 +142,6 @@ extern "C" void compute(struct computation_data *data, struct return_data *retur
   CVodeSetErrFile(package_mem, NULL);
 
   clock_t start_clock = clock();
-#ifdef LOG_LINE
-  log_line(t_now, cal_k(t_now, data), data->tir,
-           compute_time_from_start(start_clock));
-#endif
 
   // solve shit
   double left_point, right_point;
@@ -157,11 +156,9 @@ extern "C" void compute(struct computation_data *data, struct return_data *retur
     status = CV_TOO_MUCH_WORK;
     while (t_now < t_out && status == CV_TOO_MUCH_WORK) {
       status = CVode(package_mem, t_out, u_out, &t_now, CV_NORMAL);
-#ifdef LOG_LINE
-      // delete_previous_line();
-      log_line(t_now, cal_k(t_now, data), data->tir,
-               compute_time_from_start(start_clock));
-#endif
+#ifdef ACTIVATE_LIVE_PLOTTING
+      draw_frame(window);
+#endif // DEBUG
     }
 
     if (status != CV_SUCCESS) {
@@ -178,11 +175,10 @@ extern "C" void compute(struct computation_data *data, struct return_data *retur
               right_point);
   }
 
-#ifdef LOG_LINE
-  delete_previous_line();
-  printf("Computation done in %.1f seconds                           ",
-         compute_time_from_start(start_clock));
-#endif
+  // destory plotting_library
+#ifdef ACTIVATE_LIVE_PLOTTING
+  tear_down_live_plotting(window);
+#endif // DEBUG
 
   // Free stuff
   N_VDestroy(u0);
@@ -191,7 +187,4 @@ extern "C" void compute(struct computation_data *data, struct return_data *retur
   SUNLinSolFree(lin_sol);
   CVodeFree(&package_mem);
   SUNContext_Free(&sunctx);
-#ifdef LOG_LINE
-  printf("\n");
-#endif
 }
