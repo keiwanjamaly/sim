@@ -10,9 +10,10 @@
 #include <GLES2/gl2.h>
 #endif
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
+#include "grid.h"
 
 GLFWwindow *setup_live_plotting();
 void tear_down_live_plotting(GLFWwindow *);
-void draw_frame(GLFWwindow *, double);
+void draw_frame(GLFWwindow *, double, double *, Grid *);
 
 #endif // !LIVE_PLOTTING_H

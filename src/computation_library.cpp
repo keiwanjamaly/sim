@@ -133,7 +133,7 @@ extern "C" void compute(struct computation_data *data,
 
 #ifdef ACTIVATE_LIVE_PLOTTING
   CVodeSetMaxNumSteps(package_mem, 100);
-#endif // DEBUG
+#endif // ACTIVATE_LIVE_PLOTTING
 #ifndef ACTIVATE_LIVE_PLOTTING
   CVodeSetMaxNumSteps(package_mem, 1000);
 #endif // !ACTIVATE_LIVE_PLOTTING
@@ -162,7 +162,7 @@ extern "C" void compute(struct computation_data *data,
     while (t_now < t_out && status == CV_TOO_MUCH_WORK) {
       status = CVode(package_mem, t_out, u_out, &t_now, CV_NORMAL);
 #ifdef ACTIVATE_LIVE_PLOTTING
-      draw_frame(window, t_now);
+      draw_frame(window, t_now, u_output_pointer, data->computation_grid);
 #endif // DEBUG
     }
 

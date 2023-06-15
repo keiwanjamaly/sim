@@ -1,6 +1,8 @@
 #include "live_plotting.h"
-#include <filesystem>
+#include "imgui.h"
 #include "implot.h"
+#include <filesystem>
+#include <unistd.h>
 
 static void glfw_error_callback(int error, const char *description) {
   fprintf(stderr, "GLFW Error %d: %s\n", error, description);
@@ -14,7 +16,7 @@ GLFWwindow *setup_live_plotting() {
     exit(1);
   std::filesystem::current_path(cwd);
 
-    // Decide GL+GLSL versions
+  // Decide GL+GLSL versions
 #if defined(IMGUI_IMPL_OPENGL_ES2)
   // GL ES 2.0 + GLSL 100
   const char *glsl_version = "#version 100";
@@ -48,6 +50,7 @@ GLFWwindow *setup_live_plotting() {
   // Setup Dear ImGui context
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
+  ImPlot::CreateContext();
   ImGuiIO &io = ImGui::GetIO();
   (void)io;
   io.ConfigFlags |=
@@ -73,14 +76,15 @@ GLFWwindow *setup_live_plotting() {
 void tear_down_live_plotting(GLFWwindow *window) {
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
+  ImPlot::DestroyContext();
   ImGui::DestroyContext();
 
   glfwDestroyWindow(window);
   glfwTerminate();
 }
 
-void draw_frame(GLFWwindow *window, double time) {
-  ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+void draw_frame(GLFWwindow *window, double time, double *u,
+                Grid *computation_grid) {
   if (glfwWindowShouldClose(window))
     exit(1);
   // Poll and handle events (inputs, window resize, etc.)
@@ -99,13 +103,30 @@ void draw_frame(GLFWwindow *window, double time) {
   ImGui::NewFrame();
 
   {
-    ImGui::Begin("Simulation stats");
-    ImGui::Text("Current time is: %.3f", time);
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(200, 100));
+    if (ImGui::Begin("Simulation stats")) {
+      ImGui::Text("Current time is: %.3f", time);
+      ImGui::End();
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(200, 0));
+    ImGui::SetNextWindowSize(ImVec2(600, 500));
+    ImGui::Begin("Plotting");
+    if (ImPlot::BeginPlot("Function Plot")) {
+      int N = computation_grid->N;
+      double *x_data = computation_grid->grid_points;
+      double *y_data = u;
+
+      ImPlot::PlotLine("u", x_data, y_data, N);
+      ImPlot::EndPlot();
+    }
     ImGui::End();
   }
 
   // Rendering
   ImGui::Render();
+  ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
   int display_w, display_h;
   glfwGetFramebufferSize(window, &display_w, &display_h);
   glViewport(0, 0, display_w, display_h);
