@@ -1,4 +1,5 @@
 #include "live_plotting.h"
+#include "u_plotting.h"
 #include "imgui.h"
 #include "implot.h"
 #include <filesystem>
@@ -110,18 +111,8 @@ void draw_frame(GLFWwindow *window, double time, double *u,
       ImGui::End();
     }
 
-    ImGui::SetNextWindowPos(ImVec2(200, 0));
-    ImGui::SetNextWindowSize(ImVec2(600, 500));
-    ImGui::Begin("Plotting");
-    if (ImPlot::BeginPlot("Function Plot")) {
-      int N = computation_grid->N;
-      double *x_data = computation_grid->grid_points;
-      double *y_data = u;
+    plot_u(computation_grid, u);
 
-      ImPlot::PlotLine("u", x_data, y_data, N);
-      ImPlot::EndPlot();
-    }
-    ImGui::End();
   }
 
   // Rendering

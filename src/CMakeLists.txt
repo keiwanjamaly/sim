@@ -6,8 +6,6 @@ set(LIBRARY_SOURCES
   helpers.cpp
 )
 
-set(LIVE_PLOTTING_SOURCE live_plotting.cpp)
-
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/imgui)
 set(IMGUI_INCLUDE ${IMGUI_DIR} ${IMGUI_DIR}/backends)
 set(IMGUI_SOURCE 
@@ -26,6 +24,10 @@ set(IMPLOT_SOURCE
     ${IMPLOT_DIR}/implot_items.cpp
     )
 
+add_subdirectory(lib/plotting_scripts)
+
+message(LIVE_PLOTTING_INCLUDE=${LIVE_PLOTTING_INCLUDE})
+
 add_library(sim STATIC ${LIBRARY_SOURCES})
 target_link_libraries(sim SUNDIALS::cvode m)
 target_include_directories(sim PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -33,7 +35,7 @@ if (ACTIVATE_LIVE_PLOTTING)
     find_package(glfw3 3.3 REQUIRED)
     find_package(OpenGL REQUIRED)
     target_sources(sim PRIVATE ${LIVE_PLOTTING_SOURCE} ${IMGUI_SOURCE} ${IMPLOT_SOURCE})
-    target_include_directories(sim PUBLIC ${IMGUI_INCLUDE} ${IMPLOT_INCLUDE})
+    target_include_directories(sim PUBLIC ${IMGUI_INCLUDE} ${IMPLOT_INCLUDE} ${LIVE_PLOTTING_INCLUDE})
     target_link_libraries(sim glfw OpenGL::GL)
 endif()
 
@@ -48,7 +50,7 @@ foreach(FILE ${MODELS})
   target_include_directories(${LIBNAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
   if (ACTIVATE_LIVE_PLOTTING)
       target_sources(${LIBNAME} PRIVATE ${LIVE_PLOTTING_SOURCE} ${IMGUI_SOURCE} ${IMPLOT_SOURCE})
-      target_include_directories(${LIBNAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${IMGUI_INCLUDE} ${IMPLOT_INCLUDE})
+      target_include_directories(${LIBNAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${IMGUI_INCLUDE} ${IMPLOT_INCLUDE} ${LIVE_PLOTTING_INCLUDE})
       target_compile_definitions(${LIBNAME} PUBLIC ACTIVATE_LIVE_PLOTTING)
       target_compile_definitions(${LIBNAME} PRIVATE ACTIVATE_LIVE_PLOTTING)
   endif()
