@@ -102,7 +102,8 @@ void tear_down_live_plotting(LivePlottingData *data) {
   free(data);
 }
 
-void draw_frame(LivePlottingData *plotting_data, double time, double *u, double simulation_time) {
+void draw_frame(LivePlottingData *plotting_data, double time, double *u,
+                double simulation_time) {
   if (glfwWindowShouldClose(plotting_data->window)) {
     printf("Program exited due to user interrupt!\n");
     exit(1);
@@ -132,10 +133,17 @@ void draw_frame(LivePlottingData *plotting_data, double time, double *u, double 
       ImGui::End();
     }
 
-    plot_u(plotting_data, u);
-
-    if (activate_diffusion(plotting_data->data->data))
-      plot_Q(u, time, plotting_data);
+    ImGui::SetNextWindowPos(ImVec2(200, 0));
+    ImGui::SetNextWindowSize(ImVec2(1000, 1000));
+    ImGui::Begin("Plots");
+    if (ImPlot::BeginSubplots("#Function Plots", 3, 1, ImVec2(800, 400))) {
+      plot_u(plotting_data, u);
+      plot_u_within_zero_to_one(plotting_data, u);
+      if (activate_diffusion(plotting_data->data->data))
+        plot_Q(u, time, plotting_data);
+      ImPlot::EndSubplots();
+    }
+    ImGui::End();
   }
 
   // Rendering
