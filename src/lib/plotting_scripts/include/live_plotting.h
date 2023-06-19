@@ -9,11 +9,19 @@
 #if defined(IMGUI_IMPL_OPENGL_ES2)
 #include <GLES2/gl2.h>
 #endif
-#include <GLFW/glfw3.h> // Will drag system OpenGL headers
+#include "computation_data.h"
 #include "grid.h"
+#include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
-GLFWwindow *setup_live_plotting();
-void tear_down_live_plotting(GLFWwindow *);
-void draw_frame(GLFWwindow *, double, double *, Grid *);
+typedef struct live_plotting_data {
+  GLFWwindow *window;
+  // ImGuiIO &io;
+  ComputationData *data;
+  double *max_Q;
+} LivePlottingData;
+
+LivePlottingData *setup_live_plotting(ComputationData *data);
+void tear_down_live_plotting(LivePlottingData *data);
+void draw_frame(LivePlottingData *plotting_data, double, double *, double);
 
 #endif // !LIVE_PLOTTING_H

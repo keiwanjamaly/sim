@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 def calculate_sigma(one_over_g2: float, Model, sigma_max, Lambda, kir, N_Grid,
                     N_Flavor, h, sigma_0):
     mu = 0.0
-    T = 0.01
+    T = 0.00
     samples = 3
     model = Model(sigma_max, Lambda, kir, N_Grid, samples,
                   mu, T, N_Flavor, h, one_over_g2, sigma_0)
@@ -41,9 +41,9 @@ def main():
     Lambda = 100
     kir = 1e-2
     h = 1
-    sigma_0 = 1
-    sigma_max = 12.0
-    N_Grid = 2000
+    sigma_0 = 1.0
+    sigma_max = 100.0
+    N_Grid = 10000
 
     N_Flavor_list = range(2, 16)
 
@@ -52,7 +52,7 @@ def main():
         job_list.append(delayed(calculate_parameter)(
             N_Flavor, sigma_0, Lambda, kir, sigma_max, N_Grid, h))
 
-    result = Parallel(n_jobs=-1)(job_list)
+    result = Parallel(n_jobs=1)(job_list)
     result = np.array(result)
     print(result)
 

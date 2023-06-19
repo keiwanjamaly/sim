@@ -1,16 +1,30 @@
 #include "live_plotting.h"
-#include "u_plotting.h"
+#include "computation_data.h"
+#include "compute_physics.h"
 #include "imgui.h"
 #include "implot.h"
+#include "physics.h"
+#include "u_plotting.h"
 #include <filesystem>
+#include <stdlib.h>
 #include <unistd.h>
 
 static void glfw_error_callback(int error, const char *description) {
   fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-GLFWwindow *setup_live_plotting() {
+LivePlottingData *setup_live_plotting(ComputationData *data) {
   glfwSetErrorCallback(glfw_error_callback);
+
+  LivePlottingData *new_plotting_data =
+      (LivePlottingData *)malloc(sizeof(LivePlottingData));
+
+  new_plotting_data->data = data;
+  int N = data->computation_grid->N;
+  new_plotting_data->max_Q = (double *)malloc(N * sizeof(double));
+  for (int i = 0; i < N; i++) {
+    new_plotting_data->max_Q[i] = 0.0;
+  }
 
   std::filesystem::path cwd = std::filesystem::current_path();
   if (!glfwInit())
@@ -43,6 +57,7 @@ GLFWwindow *setup_live_plotting() {
   // Create window with graphics context
   GLFWwindow *window =
       glfwCreateWindow(1280, 720, "FLOW Debug Window", nullptr, nullptr);
+  new_plotting_data->window = window;
   if (window == nullptr)
     exit(1);
   glfwMakeContextCurrent(window);
@@ -53,6 +68,7 @@ GLFWwindow *setup_live_plotting() {
   ImGui::CreateContext();
   ImPlot::CreateContext();
   ImGuiIO &io = ImGui::GetIO();
+  // new_plotting_data->io = io;
   (void)io;
   io.ConfigFlags |=
       ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
@@ -71,23 +87,26 @@ GLFWwindow *setup_live_plotting() {
   bool show_demo_window = true;
   bool show_another_window = false;
   ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-  return window;
+  return new_plotting_data;
 }
 
-void tear_down_live_plotting(GLFWwindow *window) {
+void tear_down_live_plotting(LivePlottingData *data) {
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImPlot::DestroyContext();
   ImGui::DestroyContext();
 
-  glfwDestroyWindow(window);
+  glfwDestroyWindow(data->window);
   glfwTerminate();
+  free(data->max_Q);
+  free(data);
 }
 
-void draw_frame(GLFWwindow *window, double time, double *u,
-                Grid *computation_grid) {
-  if (glfwWindowShouldClose(window))
+void draw_frame(LivePlottingData *plotting_data, double time, double *u, double simulation_time) {
+  if (glfwWindowShouldClose(plotting_data->window)) {
+    printf("Program exited due to user interrupt!\n");
     exit(1);
+  }
   // Poll and handle events (inputs, window resize, etc.)
   // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to
   // tell if dear imgui wants to use your inputs.
@@ -107,24 +126,28 @@ void draw_frame(GLFWwindow *window, double time, double *u,
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2(200, 100));
     if (ImGui::Begin("Simulation stats")) {
-      ImGui::Text("Current time is: %.3f", time);
+      ImGui::Text("RG time is: %.3f", time);
+      ImGui::Text("k time is: %.4e", cal_k(time, plotting_data->data));
+      ImGui::Text("Simulation time is: %.1f", simulation_time);
       ImGui::End();
     }
 
-    plot_u(computation_grid, u);
+    plot_u(plotting_data, u);
 
+    if (activate_diffusion(plotting_data->data->data))
+      plot_Q(u, time, plotting_data);
   }
 
   // Rendering
   ImGui::Render();
   ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
   int display_w, display_h;
-  glfwGetFramebufferSize(window, &display_w, &display_h);
+  glfwGetFramebufferSize(plotting_data->window, &display_w, &display_h);
   glViewport(0, 0, display_w, display_h);
   glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w,
                clear_color.z * clear_color.w, clear_color.w);
   glClear(GL_COLOR_BUFFER_BIT);
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-  glfwSwapBuffers(window);
+  glfwSwapBuffers(plotting_data->window);
 }

@@ -1,3 +1,9 @@
+#include "compute_physics.h"
+#include <math.h>
+
+double cal_k(double t, struct computation_data *data) {
+  return data->Lambda * exp(-t);
+}
 
 void add_diffusion(double t, double k, double *grid, double *u, double *u_dot,
                    int N, struct computation_data *input_data) {
@@ -29,4 +35,11 @@ void add_diffusion(double t, double k, double *grid, double *u, double *u_dot,
 
   free(u_x);
   free(Q_cal);
+}
+
+void compute_source(double t, double k, double *grid, double *u_dot, int N,
+                    struct computation_data *input_data) {
+  for (int i = 0; i < N; i++) {
+    u_dot[i] = S(t, k, grid[i], input_data->data);
+  }
 }

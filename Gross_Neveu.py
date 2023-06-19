@@ -118,7 +118,7 @@ def run_1_1_tests():
     data_class_MF = DataClass(x, time, y)
 
     # test mean field computation for 1+1 dimension
-    with open('1+1_test_files/flow_MF_T=0.1,mu=0.1.json') as user_file:
+    with open('./1+1_test_files/flow_MF_T=0.1,mu=0.1.json') as user_file:
         parsed_json = json.load(user_file)
         x_ref = np.array(parsed_json["graphs"][-1]["x"])
         y_ref = np.array(parsed_json["graphs"][-1]["y"])

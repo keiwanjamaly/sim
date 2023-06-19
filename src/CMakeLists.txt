@@ -3,6 +3,7 @@ set(LIBRARY_SOURCES
   return_data.cpp
   computation_data.cpp
   computation_library.cpp
+  compute_physics.cpp
   helpers.cpp
 )
 

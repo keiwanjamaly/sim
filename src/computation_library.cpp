@@ -1,5 +1,4 @@
 #include <cvode/cvode.h>
-#include <math.h>
 #include <nvector/nvector_serial.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,55 +7,13 @@
 #include <time.h>
 
 #include "computation_data.h"
+#include "compute_physics.h"
 #include "grid.h"
 #ifdef ACTIVATE_LIVE_PLOTTING
 #include "live_plotting.h"
 #endif
 #include "physics.h"
 #include "return_data.h"
-
-double cal_k(double t, struct computation_data *data) {
-  return data->Lambda * exp(-t);
-}
-
-void compute_source(double t, double k, double *grid, double *u_dot, int N,
-                    struct computation_data *input_data) {
-  for (int i = 0; i < N; i++) {
-    u_dot[i] = S(t, k, grid[i], input_data->data);
-  }
-}
-
-void add_diffusion(double t, double k, double *grid, double *u, double *u_dot,
-                   int N, struct computation_data *input_data) {
-  double u_boundary;
-  double *dx = input_data->computation_grid->dx;
-  double *dx_midpoints = input_data->computation_grid->dx_midpoints;
-  double *u_x = (double *)malloc((N + 1) * sizeof(double));
-  double *Q_cal = (double *)malloc((N + 1) * sizeof(double));
-
-  // compute u_x
-  // handle left boundary
-  u_boundary = left_boundary(input_data->computation_grid, u, input_data->data);
-  u_x[0] = (u[0] - u_boundary) / dx[0];
-  for (int i = 1; i < N; i++) {
-    u_x[i] = (u[i] - u[i - 1]) / dx[i];
-  }
-  // handle right boundary
-  u_boundary =
-      right_boundary(input_data->computation_grid, u, input_data->data);
-  u_x[N] = (u_boundary - u[N - 1]) / dx[N];
-
-  for (int i = 0; i < N + 1; i++) {
-    Q_cal[i] = Q(t, k, u_x[i], input_data->data);
-  }
-
-  for (int i = 0; i < N; i++) {
-    u_dot[i] += (Q_cal[i + 1] - Q_cal[i]) / dx_midpoints[i];
-  }
-
-  free(u_x);
-  free(Q_cal);
-}
 
 int f_without_diffusion(double t, N_Vector u, N_Vector udot, void *input_data) {
   struct computation_data *user_data = (struct computation_data *)input_data;
@@ -105,7 +62,7 @@ extern "C" void compute(struct computation_data *data,
 
   // setup plotting library
 #ifdef ACTIVATE_LIVE_PLOTTING
-  GLFWwindow *window = setup_live_plotting();
+  LivePlottingData *plotting_data = setup_live_plotting(data);
 #endif // DEBUG
 
   u_out = N_VNew_Serial(data->computation_grid->N, sunctx);
@@ -132,7 +89,7 @@ extern "C" void compute(struct computation_data *data,
   CVodeSStolerances(package_mem, reltol, abstol);
 
 #ifdef ACTIVATE_LIVE_PLOTTING
-  CVodeSetMaxNumSteps(package_mem, 100);
+  CVodeSetMaxNumSteps(package_mem, 10);
 #endif // ACTIVATE_LIVE_PLOTTING
 #ifndef ACTIVATE_LIVE_PLOTTING
   CVodeSetMaxNumSteps(package_mem, 1000);
@@ -162,7 +119,7 @@ extern "C" void compute(struct computation_data *data,
     while (t_now < t_out && status == CV_TOO_MUCH_WORK) {
       status = CVode(package_mem, t_out, u_out, &t_now, CV_NORMAL);
 #ifdef ACTIVATE_LIVE_PLOTTING
-      draw_frame(window, t_now, u_output_pointer, data->computation_grid);
+      draw_frame(plotting_data, t_now, u_output_pointer, compute_time_from_start(start_clock));
 #endif // DEBUG
     }
 
@@ -181,7 +138,7 @@ extern "C" void compute(struct computation_data *data,
 
   // destory plotting_library
 #ifdef ACTIVATE_LIVE_PLOTTING
-  tear_down_live_plotting(window);
+  tear_down_live_plotting(plotting_data);
 #endif
 
   // Free stuff
