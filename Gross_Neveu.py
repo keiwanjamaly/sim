@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Tuple
 from math import sqrt, atanh
-# from mpmath import polylog
+import grid_creator
 import scipy
 
 
@@ -27,7 +27,7 @@ class GN_1p1():
     d_gamma = 2
     tolerances = 1e-10
 
-    def __init__(self, sigma_max, Lambda, kir, N_Grid, samples, mu, T,
+    def __init__(self, grid_points, Lambda, kir, samples, mu, T,
                  N_Flavor=np.infty, h=1, one_over_g2=None, sigma_0=1) -> None:
 
         if T == 0:
@@ -38,7 +38,6 @@ class GN_1p1():
         else:
             self.lib = CDLL("./build/src/libgross_neveu.dylib")
 
-        grid_points = np.linspace(0, sigma_max, N_Grid)
         grid = Grid_Interface(self.lib, grid_points)
         self.return_data = Return_Data_Interface(
             self.lib, samples, grid.pointer)
@@ -51,7 +50,8 @@ class GN_1p1():
 
         if T == 0:
             physics_data = Gross_Neveu_Interface_Vacuum(
-                self.lib, h, self.one_over_g2, self.dimension(), self.dimension_gamma(), N_Flavor)
+                self.lib, h, self.one_over_g2, self.dimension(),
+                self.dimension_gamma(), N_Flavor)
         else:
             physics_data = Gross_Neveu_Interface(
                 self.lib, h, self.one_over_g2, self.dimension(),
@@ -103,7 +103,8 @@ def run_1_1_tests():
     samples = 100
 
     def compute_1_1_sol(mu: float, T: float, N_Flavor: int) -> Tuple[float, float]:
-        sol = GN_1p1(sigma_max, Lambda, kir, N_Grid,
+        grid_points = grid_creator.create_homogenious_grid(sigma_max, N_Grid)
+        sol = GN_1p1(grid_points, Lambda, kir,
                      samples, mu, T, N_Flavor=N_Flavor)
         y = sol.return_data.solution
         x = sol.return_data.grid
@@ -184,6 +185,8 @@ def run_1_1_tests():
 
 
 def run_2_1_tests():
+    print("Hello, I'm getting runs")
+
     def analytic_vacuum_solution(sigma: float, Lambda: float, h: float, sigma_0: float):
         tmp = np.sqrt(Lambda**2 + (h*sigma_0)**2)
         d_gamma = GN_2p1.dimension_gamma()
@@ -192,36 +195,6 @@ def run_2_1_tests():
         tmp = -6*e + 6*e_vac + 6*h * \
             (sigma - sigma_0) + 3*Lambda**2*(1/e - 1/e_vac)
         return (d_gamma*h**2*sigma*tmp)/(24*np.pi)
-
-    # def expression2(h, sigma, beta, mu, sigma0, capital_lambda):
-    # def analythic_mean_field_solution(sigma: float, Lambda: float, h: float, sigma_0: float, mu: float, T: float):
-    #     beta = 1/T
-    #     term1 = (1/(2 * np.pi)) * h
-    #     term2 = -((h * sigma * (Lambda**2 + 2 * h * sigma * (h * sigma - np.sqrt(
-    #         Lambda**2 + h**2 * sigma**2)))) / np.sqrt(Lambda**2 + h**2 * sigma**2))
-    #     term3 = (h * sigma * (Lambda**2 + 2 * h * sigma_0 * (h * sigma_0 - np.sqrt(
-    #         Lambda**2 + h**2 * sigma_0**2)))) / np.sqrt(Lambda**2 + h**2 * sigma_0**2)
-    #     term4 = (2 * h * sigma * np.log(1 +
-    #              np.exp(beta * (mu - h * sigma)))) / beta
-    #     term5 = (2 * h * sigma * np.log(1 +
-    #              np.exp(-beta * (mu + h * sigma)))) / beta
-    #     term6 = ((Lambda * (Lambda + 2 * h * beta * sigma)) / (1 + np.exp(Lambda - beta * mu + h *
-    #              beta * sigma)) + 2 * h * beta * sigma * np.log(1 + np.exp(-Lambda + beta * mu - h * beta * sigma))) / beta**2
-    #     term7 = (Lambda * (Lambda + 2 * h * beta * sigma) + 2 * (1 + np.exp(Lambda + beta * mu + h * beta * sigma)) * h * beta *
-    #              sigma * np.log(1 + np.exp(-Lambda - beta * (mu + h * sigma)))) / ((1 + np.exp(Lambda + beta * (mu + h * sigma))) * beta**2)
-    #
-    #     result = term1 * (term2 + term3 + term4 + term5 - term6 + term7)
-    #     return result
-
-    # def analythic_mean_field_solution(sigma: float, Lambda: float, h: float, sigma_0: float, mu: float, T: float):
-    #     beta=1 / T
-    #     term1=h**2 * sigma
-    #     term2=h * beta * (sigma - sigma_0)
-    #     term3=np.log(1 + np.exp(beta * (mu - h * sigma)))
-    #     term4=np.log(1 + np.exp(-beta * (mu + h * sigma)))
-    #
-    #     result=(term1 * (term2 + term3 + term4)) / (np.pi * beta)
-    #     return result
 
     def analythic_mean_field_solution(sigma: float, Lambda: float, h: float,
                                       sigma_0: float, mu: float, T: float):
@@ -259,7 +232,8 @@ def run_2_1_tests():
 
     # test vacuum solution
     def compute_2_1_sol(mu: float, T: float, N_Flavor: int) -> Tuple[float, float]:
-        sol = GN_2p1(sigma_max, Lambda, kir, N_Grid,
+        grid_points = grid_creator.create_homogenious_grid(sigma_max, N_Grid)
+        sol = GN_2p1(grid_points, Lambda, kir,
                      samples, mu, T, N_Flavor=N_Flavor)
         y = sol.return_data.solution
         x = sol.return_data.grid

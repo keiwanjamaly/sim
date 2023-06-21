@@ -7,7 +7,7 @@
 
 void plot_u(LivePlottingData *plotting_data, double *u) {
   Grid *computation_grid = plotting_data->data->computation_grid;
-  if (ImPlot::BeginPlot("Function Plot")) {
+  if (ImPlot::BeginPlot("Plot of u")) {
     int N = computation_grid->N;
     double *x_data = computation_grid->grid_points;
     double *y_data = u;
@@ -22,23 +22,21 @@ void plot_u_within_zero_to_one(LivePlottingData *plotting_data, double *u) {
   int N = 0;
   double max_u = 0.0;
   double min_u = 0.0;
-  while (computation_grid->grid_points[N] <= 1.1)
-  {
-      N++;
-      max_u = std::max(max_u, u[N]);
-      min_u = std::min(min_u, u[N]);
+  while (computation_grid->grid_points[N] <= 1.1) {
+    N++;
+    max_u = std::max(max_u, u[N]);
+    min_u = std::min(min_u, u[N]);
   }
   max_u *= 1.1;
   if (min_u >= 0) {
-      min_u *= 0.9;
+    min_u *= 0.9;
   } else {
-      min_u *= 1.3;
+    min_u *= 1.3;
   }
-  if (ImPlot::BeginPlot("Function Plot")) {
+  if (ImPlot::BeginPlot("Plot of u between 0 and 1")) {
     ImPlot::SetupAxis(ImAxis_X1, "sigma");
     ImPlot::SetupAxis(ImAxis_Y1, "");
-    ImPlot::SetupAxisLimits(ImAxis_Y1, min_u, max_u,
-                            ImPlotCond_Always);
+    ImPlot::SetupAxisLimits(ImAxis_Y1, min_u, max_u, ImPlotCond_Always);
     double *x_data = computation_grid->grid_points;
     double *y_data = u;
 
@@ -67,7 +65,7 @@ void plot_Q(double *u, double t, LivePlottingData *plotting_data) {
   }
 
   // ImPlot::SetNextAxisLimits(1, 0, maximum_of_Q);
-  if (ImPlot::BeginPlot("Function Plot")) {
+  if (ImPlot::BeginPlot("Plot of the diffusion term")) {
     ImPlot::SetupAxis(ImAxis_X1, "sigma");
     ImPlot::SetupAxis(ImAxis_Y1, "");
     ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, maximum_of_Q * 1.1,

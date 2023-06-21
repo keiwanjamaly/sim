@@ -3,15 +3,19 @@ from joblib import Parallel, delayed
 from scipy.optimize import newton
 import Gross_Neveu
 from compute_observables import DataClass
-import matplotlib.pyplot as plt
+from grid_creator import create_inhomogenious_grid_from_cell_spacing
+import h5py
 
 
-def calculate_sigma(one_over_g2: float, Model, sigma_max, Lambda, kir, N_Grid,
-                    N_Flavor, h, sigma_0):
+def calculate_sigma(one_over_g2: float, Model, sigma_max, Lambda, kir,
+                    delta_sigma, N_Flavor, h, sigma_0):
     mu = 0.0
-    T = 0.00
+    T = 0.01
     samples = 3
-    model = Model(sigma_max, Lambda, kir, N_Grid, samples,
+    N_Grid = 1000
+    grid_points = create_inhomogenious_grid_from_cell_spacing(
+        sigma_max, delta_sigma)
+    model = Model(grid_points, Lambda, kir, samples,
                   mu, T, N_Flavor, h, one_over_g2, sigma_0)
 
     y = model.return_data.solution
@@ -28,39 +32,39 @@ def calculate_sigma(one_over_g2: float, Model, sigma_max, Lambda, kir, N_Grid,
     return result
 
 
-def calculate_parameter(N_Flavor, sigma_0, Lambda, kir, sigma_max, N_Grid, h):
+def calculate_parameter(N_Flavor, sigma_0, Lambda, kir, sigma_max, delta_sigma, h):
     model = Gross_Neveu.GN_2p1
     one_over_g2 = model.calculate_one_g2(h, sigma_0, Lambda)
     result = newton(calculate_sigma, one_over_g2, args=(
-        model, sigma_max, Lambda, kir, N_Grid, N_Flavor, h, sigma_0))
+        model, sigma_max, Lambda, kir, delta_sigma, N_Flavor, h, sigma_0))
     print(f'N = {N_Flavor}, 1/g^2 = {result}')
     return (N_Flavor, result)
 
 
 def main():
-    Lambda = 100
+    Lambda = 1000
     kir = 1e-2
     h = 1
     sigma_0 = 1.0
-    sigma_max = 100.0
-    N_Grid = 10000
+    sigma_max = 2000.0
+    delta_sigma = 0.006
 
-    N_Flavor_list = range(2, 16)
+    N_Flavor_list = range(2, 3)
 
     job_list = []
     for N_Flavor in N_Flavor_list:
         job_list.append(delayed(calculate_parameter)(
-            N_Flavor, sigma_0, Lambda, kir, sigma_max, N_Grid, h))
+            N_Flavor, sigma_0, Lambda, kir, sigma_max, delta_sigma, h))
 
     result = Parallel(n_jobs=1)(job_list)
     result = np.array(result)
     print(result)
 
-    # with h5py.File("couplings.hdf5", "w") as f:
-    #     f.attrs["sigma_max"] = sigma_max
-    #     f.attrs["Lambda"] = Lambda
-    #     f.attrs["kir"] = kir
-    #     f.attrs["N_Grid"] = N_Grid
+    for N_Flavor in N_Flavor_list:
+        with h5py.File(f'./data/couplings_Lambda={Lambda}_N={N_Flavor}.hdf5', "w") as f:
+            f.attrs["sigma_max"] = sigma_max
+            f.attrs["Lambda"] = Lambda
+            f.attrs["kir"] = kir
 
     # with h5py.File(path_and_filename, "w") as f:
     #     f.attrs["sigmaMax"] = self.grid.sigma[-1]

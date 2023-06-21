@@ -1,5 +1,6 @@
 from Gross_Neveu import GN_2p1
 from compute_observables import DataClass
+import grid_creator
 
 import numpy as np
 from scipy.interpolate import LinearNDInterpolator
@@ -26,7 +27,8 @@ def calculate_sigma(mu, T, Lambda):
     N_Grid = 1000
     samples = 50
 
-    sol = GN_2p1(sigma_max, Lambda, kir, N_Grid, samples, mu, T)
+    grid_points = grid_creator.create_homogenious_grid(sigma_max, N_Grid)
+    sol = GN_2p1(grid_points, Lambda, kir, samples, mu, T)
     y = sol.return_data.solution
     x = sol.return_data.grid
     time = sol.return_data.time

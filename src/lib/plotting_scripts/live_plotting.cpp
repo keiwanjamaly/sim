@@ -124,17 +124,18 @@ void draw_frame(LivePlottingData *plotting_data, double time, double *u,
   ImGui::NewFrame();
 
   {
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(200, 100));
+    // ImGui::SetNextWindowPos(ImVec2(0, 0));
+    // ImGui::SetNextWindowSize(ImVec2(200, 100));
     if (ImGui::Begin("Simulation stats")) {
-      ImGui::Text("RG time is: %.3f", time);
-      ImGui::Text("k time is: %.4e", cal_k(time, plotting_data->data));
+      ImGui::Text("RG time is: %.3f/%.3f", time, plotting_data->data->tir);
+      ImGui::Text("k time is: %.4e/%.1e", cal_k(time, plotting_data->data),
+                  plotting_data->data->kir);
       ImGui::Text("Simulation time is: %.1f", simulation_time);
       ImGui::End();
     }
 
-    ImGui::SetNextWindowPos(ImVec2(200, 0));
-    ImGui::SetNextWindowSize(ImVec2(1000, 1000));
+    // ImGui::SetNextWindowPos(ImVec2(200, 0));
+    // ImGui::SetNextWindowSize(ImVec2(1000, 1000));
     ImGui::Begin("Plots");
     if (ImPlot::BeginSubplots("#Function Plots", 3, 1, ImVec2(800, 400))) {
       plot_u(plotting_data, u);
