@@ -7,6 +7,7 @@ from grid_creator import create_inhomogenious_grid_from_cell_spacing
 import h5py
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+import timeit
 
 
 def calculate_sigma(one_over_g2: float, Model, sigma_max, Lambda, kir,
@@ -42,19 +43,21 @@ def compute_couping(Lambda, N_Flavor):
     delta_sigma = 0.006
 
     model = Gross_Neveu.GN_2p1
+
+    # use mean field coupling or an approximation of the fit for the initial parameter
     with h5py.File('./data/couping_pre_computations.hdf5', "r") as f:
         if Lambda in f["couplings"][:, 0]:
             pos = list(f["couplings"][:, 0]).index(Lambda)
             beta, alpha = f["couplings"][pos][1:]
-            # print(alpha, beta)
             one_over_g2 = alpha * np.arctan(beta * N_Flavor) * 2 / np.pi
         else:
             one_over_g2 = model.calculate_one_g2(h, sigma_0, Lambda)
-        # print(one_over_g2, one_over_g22)
-        # exit()
+
+    start = timeit.default_timer()
     result = newton(calculate_sigma, one_over_g2, args=(
         model, sigma_max, Lambda, kir, delta_sigma, N_Flavor, h, sigma_0))
-    print(f'N = {N_Flavor}, 1/g^2 = {result}')
+    time = timeit.default_timer() - start
+    print(f'N = {N_Flavor}, 1/g^2 = {result} it took {time:.2f} seconds')
 
     with h5py.File(f'./data/couplings_Lambda={Lambda}_N={N_Flavor}.hdf5', "w") as f:
         f.attrs["sigma_max"] = sigma_max
@@ -62,6 +65,7 @@ def compute_couping(Lambda, N_Flavor):
         f.attrs["kir"] = kir
         f.attrs["coupling"] = result
         f.attrs["N_Flavor"] = N_Flavor
+        f.attrs["time"] = time
 
 
 def compute_couping_fit(Lambda, plot=False):
