@@ -22,7 +22,6 @@ set(CMAKE_CXX_STANDARD 17)
 # set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Enable double assertions
-find_package(unity REQUIRED)
 
 # Include directories
 # include_directories(src)
@@ -31,6 +30,7 @@ find_package(unity REQUIRED)
 add_subdirectory(src)
 if(ACTIVATE_TESTS)
     set(UNITY_INSTALL_PREFIX "~/install/unity" CACHE PATH "")
+    find_package(unity REQUIRED)
     add_subdirectory(tests)
 endif()
 
