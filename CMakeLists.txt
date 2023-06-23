@@ -10,6 +10,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(SUNDIALS_INSTALL_PREFIX "~/install/sundials" CACHE PATH "")
 set(UNITY_INSTALL_PREFIX "~/install/unity" CACHE PATH "")
 set(ACTIVATE_LIVE_PLOTTING ON CACHE BOOL "")
+set(ACTIVATE_TESTS ON CACHE BOOL "")
 
 find_package(SUNDIALS REQUIRED)
 
@@ -29,6 +30,8 @@ find_package(unity REQUIRED)
 
 # Add subdirectories
 add_subdirectory(src)
-add_subdirectory(tests)
+if(ACTIVATE_TESTS)
+    add_subdirectory(tests)
+endif()
 
 
