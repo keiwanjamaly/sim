@@ -34,9 +34,9 @@ class GN_1p1():
             if mu != 0:
                 raise RuntimeError(
                     f'There is no implementation for T=0 and mu != 0, mu is {mu}')
-            self.lib = CDLL("./build/src/libgross_neveu_vacuum.dylib")
+            self.lib = CDLL("./build/src/libgross_neveu_vacuum.so")
         else:
-            self.lib = CDLL("./build/src/libgross_neveu.dylib")
+            self.lib = CDLL("./build/src/libgross_neveu.so")
 
         grid = Grid_Interface(self.lib, grid_points)
         self.return_data = Return_Data_Interface(
