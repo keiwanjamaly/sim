@@ -9,4 +9,4 @@
 
 echo $1
 echo $2
-python3.11 -N $1 -L $2
+python3.11 compute_couplings.py -N $1 -L $2
