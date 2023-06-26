@@ -70,7 +70,7 @@ def compute_couping(Lambda, N_Flavor):
 
 def compute_couping_fit(Lambda, plot=False):
     couplings = []
-    N_Flavor_List = list(range(2, 8))
+    N_Flavor_List = list(range(2, 14))
     for N_Flavor in N_Flavor_List:
         with h5py.File(f'./data/couplings_Lambda={Lambda}_N={N_Flavor}.hdf5', "r") as f:
             couplings.append(f.attrs["coupling"])
