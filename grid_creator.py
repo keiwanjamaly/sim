@@ -68,16 +68,16 @@ def compare_grid_points():
     Lambda = 100
     kir = 1e-1
     grid_points = np.arange(0.0, sigma_max, delta_sigma)
-    model_linear = Gross_Neveu.GN_2p1(0.0, Lambda, kir, 1, samples,
-                                      mu, T, N_Flavor, h=1.0, sigma_0=1.0, grid_points=grid_points)
+    model_linear = Gross_Neveu.GN_2p1(grid_points, Lambda, kir, samples,
+                                      mu, T, N_Flavor, h=1.0, sigma_0=1.0)
     y_linear = model_linear.return_data.solution[-1]
     x_linear = model_linear.return_data.grid
     f_linear = interpolate.interp1d(x_linear, y_linear)
 
     grid_points = create_inhomogenious_grid_from_cell_spacing(
         sigma_max, delta_sigma)
-    model_non_linear = Gross_Neveu.GN_2p1(0.0, Lambda, kir, 1, samples,
-                                          mu, T, N_Flavor, h=1.0, sigma_0=1.0, grid_points=grid_points)
+    model_non_linear = Gross_Neveu.GN_2p1(grid_points, Lambda, kir, samples,
+                                          mu, T, N_Flavor, h=1.0, sigma_0=1.0)
 
     y_non_linear = model_non_linear.return_data.solution[-1]
     x_non_linear = model_non_linear.return_data.grid
