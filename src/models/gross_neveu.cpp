@@ -17,10 +17,11 @@ struct physics_data {
   double beta;
 };
 
-extern "C" struct physics_data *initialize_physics_data(double h, double one_over_g2,
-                                             int dimension, int dimension_gamma,
-                                             double mu, double T, double N) {
-  struct physics_data *new_physics_data = (struct physics_data *)malloc(sizeof(struct physics_data));
+extern "C" struct physics_data *
+initialize_physics_data(double h, double one_over_g2, int dimension,
+                        int dimension_gamma, double mu, double T, double N) {
+  struct physics_data *new_physics_data =
+      (struct physics_data *)malloc(sizeof(struct physics_data));
   new_physics_data->h = h;
   new_physics_data->dimension = dimension;
   new_physics_data->dimension_gamma = dimension_gamma;
@@ -33,7 +34,8 @@ extern "C" struct physics_data *initialize_physics_data(double h, double one_ove
   return new_physics_data;
 }
 
-extern "C" void free_physics_data(struct physics_data *physics_data_to_be_freed) {
+extern "C" void
+free_physics_data(struct physics_data *physics_data_to_be_freed) {
   free(physics_data_to_be_freed);
 }
 
@@ -84,11 +86,4 @@ double S(double t, double k, double x, struct physics_data *data) {
       x * pow(h, 2) * pow(k, d + 2) * A_d * d_gamma * (tmp) / (2.0 * pow(e, 3));
 
   return return_value;
-}
-
-double left_boundary(Grid *_, double *u, PhysicsData *data) { return 0; }
-
-double right_boundary(Grid *computation_grid, double *u, PhysicsData *data) {
-  int N = computation_grid->N;
-  return 2 * u[N - 1] - u[N - 2];
 }

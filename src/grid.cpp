@@ -14,10 +14,34 @@ extern "C" Grid *create_grid(int N, double *points) {
   compute_dx(new_grid, N, points);
   compute_grid_midpoints(new_grid, N, points, grid_midpoints);
   compute_dx_midpoints(new_grid, N, grid_midpoints);
+  compute_extrapolation_factors(new_grid, N, points);
 
   free(grid_midpoints);
   return new_grid;
 }
+
+void compute_extrapolation_factors(Grid *grid, int N, double *points) {
+  double x_3 = points[N - 1];
+  double x_2 = points[N - 2];
+  double x_1 = points[N - 3];
+
+  grid->c_1 = (x_3 - x_2) / (x_1 - x_2);
+  grid->c_2 = (x_1 - x_3) / (x_1 - x_2);
+
+  printf("c_1 = %f, c_2 = %f\n", grid->c_1, grid->c_2);
+}
+
+double right_boundary(Grid *computation_grid, double *u) {
+  int N = computation_grid->N;
+  double y_2 = u[N - 1];
+  double y_1 = u[N - 2];
+  double c_1 = computation_grid->c_1;
+  double c_2 = computation_grid->c_2;
+
+  return c_1 * y_1 + c_2 * y_2;
+}
+
+double left_boundary(Grid *_, double *u) { return 0; }
 
 void copy_internal_grid_points(Grid *grid, int N, double *points) {
   grid->grid_left = points[0];

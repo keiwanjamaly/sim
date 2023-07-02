@@ -15,14 +15,13 @@ void add_diffusion(double t, double k, double *grid, double *u, double *u_dot,
 
   // compute u_x
   // handle left boundary
-  u_boundary = left_boundary(input_data->computation_grid, u, input_data->data);
+  u_boundary = left_boundary(input_data->computation_grid, u);
   u_x[0] = (u[0] - u_boundary) / dx[0];
   for (int i = 1; i < N; i++) {
     u_x[i] = (u[i] - u[i - 1]) / dx[i];
   }
   // handle right boundary
-  u_boundary =
-      right_boundary(input_data->computation_grid, u, input_data->data);
+  u_boundary = right_boundary(input_data->computation_grid, u);
   u_x[N] = (u_boundary - u[N - 1]) / dx[N];
 
   for (int i = 0; i < N + 1; i++) {

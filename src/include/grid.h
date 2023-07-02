@@ -5,6 +5,7 @@
 
 typedef struct grid {
   int N;
+  double c_1, c_2;
   double grid_left;
   double grid_right;
   double *grid_points;
@@ -18,6 +19,9 @@ void compute_dx(Grid *grid, int N, double *points);
 void compute_grid_midpoints(Grid *grid, int N, double *points,
                             double *grid_midpoints);
 void compute_dx_midpoints(Grid *grid, int N, double *grid_midpoints);
+double right_boundary(Grid *computation_grid, double *u);
+double left_boundary(Grid *_, double *u);
+void compute_extrapolation_factors(Grid *grid, int N, double *points);
 extern "C" void destroy_grid(Grid *grid_to_be_freed);
 
 #endif // GRID_H

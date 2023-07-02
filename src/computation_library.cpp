@@ -108,10 +108,8 @@ extern "C" void compute(struct computation_data *data,
   // solve shit
   double left_point, right_point;
   // save zeroth step
-  left_point =
-      left_boundary(data->computation_grid, u_output_pointer, data->data);
-  right_point =
-      right_boundary(data->computation_grid, u_output_pointer, data->data);
+  left_point = left_boundary(data->computation_grid, u_output_pointer);
+  right_point = right_boundary(data->computation_grid, u_output_pointer);
   save_step(return_struct, 0, u_output_pointer, t_now, left_point, right_point);
   for (int i = 1; i < steps_to_save; i++) {
     t_out = dt * i;
@@ -119,7 +117,8 @@ extern "C" void compute(struct computation_data *data,
     while (t_now < t_out && status == CV_TOO_MUCH_WORK) {
       status = CVode(package_mem, t_out, u_out, &t_now, CV_NORMAL);
 #ifdef ACTIVATE_LIVE_PLOTTING
-      draw_frame(plotting_data, t_now, u_output_pointer, compute_time_from_start(start_clock));
+      draw_frame(plotting_data, t_now, u_output_pointer,
+                 compute_time_from_start(start_clock));
 #endif // DEBUG
     }
 
@@ -128,10 +127,8 @@ extern "C" void compute(struct computation_data *data,
       exit(-1);
     }
     // save after each step
-    left_point =
-        left_boundary(data->computation_grid, u_output_pointer, data->data);
-    right_point =
-        right_boundary(data->computation_grid, u_output_pointer, data->data);
+    left_point = left_boundary(data->computation_grid, u_output_pointer);
+    right_point = right_boundary(data->computation_grid, u_output_pointer);
     save_step(return_struct, i, u_output_pointer, t_now, left_point,
               right_point);
   }

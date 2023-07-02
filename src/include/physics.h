@@ -17,10 +17,6 @@ double S(double t, double k, double x, struct physics_data *data);
 // initial condition
 double initial_condition(double x, struct physics_data *data);
 
-// boundary terms
-double left_boundary(struct grid *computation_grid, double *u, struct physics_data *data);
-double right_boundary(struct grid *computation_grid, double *u, struct physics_data *data);
-
 bool activate_diffusion(struct physics_data *data);
 
 #endif
