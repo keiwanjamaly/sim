@@ -1,5 +1,6 @@
 from ctypes import CDLL, Structure, c_int, c_double, POINTER, c_void_p
 import numpy as np
+import platform
 
 from c_Grid import Grid, Grid_Interface
 from c_Return_Data import Return_Data, Return_Data_Interface
@@ -19,7 +20,12 @@ class Computation_Interface(Structure):
 
 def main():
 
-    lib = CDLL("./build/src/libsim.so")
+    if platform.system() == 'Linux':
+        lib = CDLL("./build/src/libsim.so")
+    elif platform.system() == 'Darwin':
+        lib = CDLL("./build/src/libsim.dylib")
+    else:
+        raise RuntimeError('Platform not defined')
 
     sigma_max = 10
     N_Grid = 11

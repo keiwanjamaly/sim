@@ -11,6 +11,7 @@ from typing import Tuple
 from math import sqrt, atanh
 import grid_creator
 import scipy
+import platform
 
 
 def expit(x):
@@ -34,9 +35,19 @@ class GN_1p1():
             if mu != 0:
                 raise RuntimeError(
                     f'There is no implementation for T=0 and mu != 0, mu is {mu}')
-            self.lib = CDLL("./build/src/libgross_neveu_vacuum.so")
+            if platform.system() == 'Linux':
+                self.lib = CDLL("./build/src/libgross_neveu_vacuum.so")
+            elif platform.system() == 'Darwin':
+                self.lib = CDLL("./build/src/libgross_neveu_vacuum.dylib")
+            else:
+                raise RuntimeError('Platform not defined')
         else:
-            self.lib = CDLL("./build/src/libgross_neveu.so")
+            if platform.system() == 'Linux':
+                self.lib = CDLL("./build/src/libgross_neveu.so")
+            elif platform.system() == 'Darwin':
+                self.lib = CDLL("./build/src/libgross_neveu.dylib")
+            else:
+                raise RuntimeError('Platform not defined')
 
         grid = Grid_Interface(self.lib, grid_points)
         self.return_data = Return_Data_Interface(
@@ -185,8 +196,6 @@ def run_1_1_tests():
 
 
 def run_2_1_tests():
-    print("Hello, I'm getting runs")
-
     def analytic_vacuum_solution(sigma: float, Lambda: float, h: float, sigma_0: float):
         tmp = np.sqrt(Lambda**2 + (h*sigma_0)**2)
         d_gamma = GN_2p1.dimension_gamma()

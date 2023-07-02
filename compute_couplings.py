@@ -1,4 +1,5 @@
 import numpy as np
+import os.path
 import argparse
 from scipy.optimize import newton
 import Gross_Neveu
@@ -35,6 +36,25 @@ def calculate_sigma(one_over_g2: float, Model, sigma_max, Lambda, kir,
     return result
 
 
+def get_coupling_from_file(Lambda: float, N_Flavor: float, model, sigma_0: float = 1.0, h: float = 1.0):
+    filename = f'./data/couplings_Lambda={Lambda}_N={N_Flavor}.hdf5'
+    if np.isinf(N_Flavor):
+        return model.calculate_one_g2(h, sigma_0, Lambda)
+    elif os.path.isfile(filename):
+        with h5py.File(filename, "r") as f:
+            return f.attrs["coupling"]
+    else:
+        with h5py.File('./data/couping_pre_computations.hdf5', "r") as f:
+            if Lambda in f["couplings"][:, 0]:
+                pos = list(f["couplings"][:, 0]).index(Lambda)
+                beta, alpha = f["couplings"][pos][1:]
+                return alpha * np.arctan(beta * N_Flavor) * 2 / np.pi
+            else:
+                raise RuntimeWarning(
+                    "There is no reference data for this Cutoff, using mean field coupling instead")
+                return model.calculate_one_g2(h, sigma_0, Lambda)
+
+
 def compute_couping(Lambda, N_Flavor):
     kir = 1e-2
     h = 1
@@ -45,13 +65,7 @@ def compute_couping(Lambda, N_Flavor):
     model = Gross_Neveu.GN_2p1
 
     # use mean field coupling or an approximation of the fit for the initial parameter
-    with h5py.File('./data/couping_pre_computations.hdf5', "r") as f:
-        if Lambda in f["couplings"][:, 0]:
-            pos = list(f["couplings"][:, 0]).index(Lambda)
-            beta, alpha = f["couplings"][pos][1:]
-            one_over_g2 = alpha * np.arctan(beta * N_Flavor) * 2 / np.pi
-        else:
-            one_over_g2 = model.calculate_one_g2(h, sigma_0, Lambda)
+    one_over_g2 = get_coupling_from_file(Lambda, N_Flavor, model)
 
     start = timeit.default_timer()
     result = newton(calculate_sigma, one_over_g2, args=(
@@ -70,7 +84,7 @@ def compute_couping(Lambda, N_Flavor):
 
 def compute_couping_fit(Lambda, plot=False):
     couplings = []
-    N_Flavor_List = list(range(2, 14))
+    N_Flavor_List = list(range(2, 17))
     for N_Flavor in N_Flavor_List:
         with h5py.File(f'./data/couplings_Lambda={Lambda}_N={N_Flavor}.hdf5', "r") as f:
             couplings.append(f.attrs["coupling"])
@@ -83,12 +97,17 @@ def compute_couping_fit(Lambda, plot=False):
     popt, pcov = curve_fit(func, N_Flavor_List, couplings)
 
     if plot:
-        plt.axhline(y=coupling_mf, color='r', linestyle='-')
+        plt.axhline(y=coupling_mf, color='r', linestyle='-',
+                    label="mean field couplings")
         xdata = np.linspace(2, 16)
         plt.plot(xdata, func(xdata, *popt))
-        plt.title(f'the factor inside arctan tangent is {popt[0]:.2f}')
-        plt.scatter(N_Flavor_List, couplings)
+        plt.title(f'$\\Lambda = {Lambda:.0f}$')
+        plt.scatter(N_Flavor_List, couplings,
+                    label=f'$2/(\\pi * g^2_{{mf}}) \\cdot \\arctan({popt[0]:.1f} \\cdot N_f)$')
+        plt.xlabel(r'$N_f$')
+        plt.ylabel(r'$\frac{1}{g^2}$', rotation=0)
 
+        plt.legend()
         plt.show()
     return popt[0], coupling_mf
 
@@ -109,28 +128,22 @@ def compute_time_fits(Lambda):
     def func(x, a, b):
         return a * np.exp(b * x)
 
-    runs = {
-        10: ([2, 3, 4, 5, 6, 7],
-             [37.5, 58.48, 152.44, 342.30, 1234.52, 1919.02]),
-        100: ([2, 3, 4, 5, 6, 7],
-              [34.08, 54.0, 89.87, 468.4, 824.78, 1439.66]),
-        200: ([2, 3, 4, 5, 6, 7],
-              [34.17, 60.78, 84.88, 613.28, 681.30, 1398.38]),
-        500: ([2, 3, 4, 5, 6, 7],
-              [31.91, 58.23, 77.6, 136.26, 974.79, 1106.92]),
-        1000: ([2, 3, 4, 5, 6, 7],
-               [32.04, 64.55, 124.19, 417.64, 718.57, 1127.69]),
-    }
+    N_Flavor_List = list(range(2, 17))
 
-    N = runs[Lambda][0]
-    time = runs[Lambda][1]
-    time_log = np.log(runs[Lambda][1])
-    popt, pcov = curve_fit(lambda x, a, b: np.log(func(x, a, b)), N, time_log)
+    time = []
+
+    for N_Flavor in N_Flavor_List:
+        with h5py.File(f'./data/couplings_Lambda={Lambda}_N={N_Flavor}.hdf5', "r") as f:
+            time.append(f.attrs["time"])
+
+    time_log = np.log(time)
+    popt, pcov = curve_fit(lambda x, a, b: np.log(
+        func(x, a, b)), N_Flavor_List, time_log)
 
     print(popt)
     xdata = np.linspace(2, 16)
     plt.plot(xdata, func(xdata, *popt))
-    plt.scatter(N, time)
+    plt.scatter(N_Flavor_List, time)
     plt.title(f'exponential is {popt[0]:.1f}exp({popt[1]:.2f}*x)')
     plt.yscale('log')
 
@@ -138,10 +151,7 @@ def compute_time_fits(Lambda):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        prog='Program Name',
-        description='What the program does',
-        epilog='Text at the bottom of help')
+    parser = argparse.ArgumentParser(prog='couplings calculator')
     parser.add_argument(
         '-N', type=int, help='Set the number of flavors', required=True, default=None)
     parser.add_argument('-L', type=float,
