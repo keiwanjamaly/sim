@@ -53,8 +53,8 @@ def get_error(mu, T, Lambda):
 def main():
     mu_max = 1.2
     T_max = 1.0
-    mu_array = np.arange(0, mu_max, 0.1)
-    T_array = np.arange(0.01, T_max, 0.1)
+    mu_array = np.arange(0, mu_max, 0.02)
+    T_array = np.arange(0.01, T_max, 0.02)
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
