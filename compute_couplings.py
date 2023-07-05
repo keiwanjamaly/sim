@@ -50,7 +50,7 @@ def get_coupling_from_file(Lambda: float, N_Flavor: float, model, sigma_0: float
                 beta, alpha = f["couplings"][pos][1:]
                 return alpha * np.arctan(beta * N_Flavor) * 2 / np.pi
             else:
-                raise RuntimeWarning(
+                print(
                     "There is no reference data for this Cutoff, using mean field coupling instead")
                 return model.calculate_one_g2(h, sigma_0, Lambda)
 
