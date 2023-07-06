@@ -2,10 +2,10 @@ from ctypes import CDLL, Structure, c_int, c_double, POINTER, c_void_p
 import numpy as np
 import platform
 
-from c_Grid import Grid, Grid_Interface
-from c_Return_Data import Return_Data, Return_Data_Interface
-from c_Computation_Data import Computation_Data, Computation_Data_Interface
-from c_Gross_Neveu import Gross_Neveu_Interface
+from python_files.interfaces.c_Grid import Grid, Grid_Interface
+from python_files.interfaces.c_Return_Data import Return_Data, Return_Data_Interface
+from python_files.interfaces.c_Computation_Data import Computation_Data, Computation_Data_Interface
+from python_files.interfaces.c_Gross_Neveu import Gross_Neveu_Interface
 
 
 class Computation_Interface(Structure):

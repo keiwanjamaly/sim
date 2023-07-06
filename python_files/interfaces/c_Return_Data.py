@@ -1,5 +1,5 @@
 from ctypes import CDLL, Structure, c_int, c_double, POINTER
-from c_Grid import Grid
+from python_files.interfaces.c_Grid import Grid
 
 
 class Return_Data(Structure):

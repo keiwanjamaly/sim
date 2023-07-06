@@ -1,6 +1,6 @@
 from ctypes import CDLL, Structure, c_int, c_double, POINTER, c_void_p
 
-from c_Grid import Grid
+from python_files.interfaces.c_Grid import Grid
 
 
 class Computation_Data(Structure):
