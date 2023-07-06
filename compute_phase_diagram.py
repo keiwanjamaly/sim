@@ -1,8 +1,8 @@
-from Gross_Neveu import GN_2p1
-from compute_observables import DataClass
-import grid_creator
-from compute_couplings import get_coupling_from_file
-
+from python_files.gross_neveu.Gross_Neveu import GN_2p1
+from python_files.data_class import DataClass
+from python_files.grid_creator import create_inhomogenious_grid_from_cell_spacing
+from python_files.gross_neveu.couplings.couplings_io import get_exact_coupling_from_file
+from python_files.gross_neveu.couplings.couplings_io import generate_filename
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -29,7 +29,7 @@ def calculate_sigma(mu, T, Lambda, N_Flavor, one_over_g2):
     delta_sigma = 0.006
     samples = 5
 
-    grid_points = grid_creator.create_inhomogenious_grid_from_cell_spacing(
+    grid_points = create_inhomogenious_grid_from_cell_spacing(
         sigma_max, delta_sigma)
     sol = GN_2p1(grid_points, Lambda, kir, samples, mu, T,
                  N_Flavor=N_Flavor, one_over_g2=one_over_g2)
@@ -75,7 +75,8 @@ def main():
         f'with {len(T_array)} points in T direction and {len(mu_array)} points in mu direction')
     print(f'total number of points is {len(T_array) * len(mu_array)}')
 
-    one_over_g2 = get_coupling_from_file(Lambda, N_Flavor, GN_2p1)
+    filename = generate_filename(Lambda, N_Flavor, "./data")
+    one_over_g2 = get_exact_coupling_from_file(filename)
 
     job_list = []
 
