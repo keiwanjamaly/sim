@@ -101,6 +101,8 @@ extern "C" void compute(struct computation_data *data,
 
   CVodeSetLinearSolver(package_mem, lin_sol, jacobi_matrix);
 
+  CVodeSetMaxErrTestFails(package_mem, 1000);
+
   CVodeSetErrFile(package_mem, NULL);
 
   clock_t start_clock = clock();
