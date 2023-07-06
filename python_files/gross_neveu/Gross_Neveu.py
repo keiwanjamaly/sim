@@ -86,3 +86,14 @@ class GN_2p1(GN_1p1):
         tmp = cls.d_gamma * (Lambda**2 + 2 * h * sigma_0 * (h * sigma_0 - tmp)) \
             / (8 * np.pi * tmp)
         return tmp
+
+
+def get_model(dimension: int):
+    if dimension == 1:
+        model = GN_1p1
+    elif dimension == 2:
+        model = GN_2p1
+    else:
+        raise RuntimeError(
+            "Gross Neveu Model is not implemented for more than 2 spatial dimensions")
+    return model
