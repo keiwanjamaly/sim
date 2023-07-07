@@ -11,8 +11,8 @@ def compute_sigma(one_over_g2, dimension, mu, T, sigma_max,
         result = sigma(one_over_g2, dimension, mu, T, sigma_max,
                        Lambda, kir, delta_sigma, N_Flavor, h, sigma_0)
         print(f'mu = {mu}, T = {T}, result = {result} - done')
-        return result
     except:
         result = -1
         print(f'mu = {mu}, T = {T} result = {result}- error')
-        return result
+
+    return mu, T, result
