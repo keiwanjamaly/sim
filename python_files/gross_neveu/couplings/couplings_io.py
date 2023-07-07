@@ -65,6 +65,16 @@ class NoCouplingComputed(Exception):
 def coupling_fit_function(x, a, coupling_mf):
     return coupling_mf * np.arctan(a*x) * 2 / np.pi
 
+def get_all_pre_computed_alphas_and_lambdas(dir: str):
+    with h5py.File(os.path.join(dir, 'couping_pre_computations.hdf5'), "r") as f:
+        Lambdas = f["couplings"][:, 0]
+        alphas = f["couplings"][:, 1]
+
+    Lambdas = list(Lambdas)
+    alphas = list(alphas)
+    alphas = sorted(alphas, key = lambda e: Lambdas[alphas.index(e)])
+    Lambdas = sorted(Lambdas)
+    return Lambdas, alphas
 
 def get_pre_computed_coupling_from_file(Lambda: float, N_Flavor: float, dir: str):
     with h5py.File(os.path.join(dir, 'couping_pre_computations.hdf5'), "r") as f:

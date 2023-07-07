@@ -9,6 +9,7 @@ from python_files.gross_neveu.couplings.couplings_io import save_coupling
 from python_files.gross_neveu.couplings.couplings_io import get_computed_couplings_from_file
 from python_files.gross_neveu.couplings.couplings_io import coupling_fit_function
 from python_files.gross_neveu.couplings.couplings_io import get_all_cutoffs_with_more_than_two_couplings
+from python_files.gross_neveu.couplings.couplings_io import get_all_pre_computed_alphas_and_lambdas
 from python_files.gross_neveu.compute_observable import sigma as calculate_sigma
 from python_files.gross_neveu.Gross_Neveu import get_model
 
@@ -74,4 +75,9 @@ def compute_all_coupling_fits():
     with h5py.File('./data/couping_pre_computations.hdf5', "w") as f:
         f.create_dataset("couplings", data=data)
 
+def plot_alpha_vs_lambda(dir: str):
+    Lambdas, alphas = get_all_pre_computed_alphas_and_lambdas(dir)
+    plt.plot(Lambdas, alphas)
+    plt.scatter(Lambdas, alphas)
+    plt.show()
 
