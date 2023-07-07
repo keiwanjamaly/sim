@@ -45,12 +45,10 @@ def main():
     h = 1.0
     sigma_0 = 1.0
 
-    mu_T_list = []
     job_list = []
 
     for mu in mu_array:
         for T in T_array:
-            mu_T_list.append([mu, T])
             job_list.append([one_over_g2, dimension, mu, T, sigma_max,
                              Lambda, kir, delta_sigma, N_Flavor, h, sigma_0])
 
