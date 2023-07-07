@@ -1,8 +1,8 @@
-from ctypes import CDLL, Structure, c_int, c_double, POINTER, c_void_p
+from ctypes import CDLL, Structure, POINTER
 import numpy as np
 import platform
 
-from python_files.interfaces.c_Grid import Grid, Grid_Interface
+from python_files.interfaces.c_Grid import Grid_Interface
 from python_files.interfaces.c_Return_Data import Return_Data, Return_Data_Interface
 from python_files.interfaces.c_Computation_Data import Computation_Data, Computation_Data_Interface
 from python_files.interfaces.c_Gross_Neveu import Gross_Neveu_Interface

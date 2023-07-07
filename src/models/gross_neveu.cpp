@@ -15,6 +15,7 @@ struct physics_data {
   double one_over_N;
   double mu;
   double beta;
+  double T;
 };
 
 extern "C" struct physics_data *
@@ -30,6 +31,7 @@ initialize_physics_data(double h, double one_over_g2, int dimension,
   new_physics_data->one_over_g2 = one_over_g2;
   new_physics_data->mu = mu;
   new_physics_data->beta = 1 / T;
+  new_physics_data->T = T;
   new_physics_data->A_d = calculate_prefactor(dimension);
   return new_physics_data;
 }
