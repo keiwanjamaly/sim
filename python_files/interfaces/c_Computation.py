@@ -1,4 +1,4 @@
-from ctypes import CDLL, Structure, POINTER
+from ctypes import CDLL, Structure, POINTER, c_int
 import numpy as np
 import platform
 
@@ -13,9 +13,11 @@ class Computation_Interface(Structure):
         self.compute = lib.compute
         self.compute.argtypes = [
             POINTER(Computation_Data), POINTER(Return_Data)]
-        self.compute.restype = None
+        self.compute.restype = c_int
 
-        self.compute(computation_data, return_data)
+        result = self.compute(computation_data, return_data)
+        if result != 0:
+            raise RuntimeError()
 
 
 def main():
