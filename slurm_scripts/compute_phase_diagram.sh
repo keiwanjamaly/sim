@@ -9,4 +9,4 @@
 #SBATCH --mail-type=FAIL
 
 cd ..
-python3.11 compute_phase_diagram.py -N $1 -L $2
+python3.11 -m python_files.phase_diagram -N $1 -L $2

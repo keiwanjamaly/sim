@@ -14,7 +14,9 @@ from python_files.gross_neveu.compute_observable import sigma as calculate_sigma
 from python_files.gross_neveu.Gross_Neveu import get_model
 
 def calculate_sigma_difference(one_over_g2, dimension, sigma_max, Lambda, kir, delta_sigma, N_Flavor, h, sigma_0):
-    sigma_0_ir = calculate_sigma(one_over_g2 ,dimension, sigma_max, Lambda, kir, delta_sigma, N_Flavor, h, sigma_0)
+    mu = 0.0
+    T = 0.01
+    sigma_0_ir = calculate_sigma(one_over_g2 ,dimension, mu, T, sigma_max, Lambda, kir, delta_sigma, N_Flavor, h, sigma_0)
     sigma_0 = 1.0
     result = sigma_0_ir - sigma_0
     print(f'with 1/g^2 = {one_over_g2} the deviation of sigma_0 = {result}')

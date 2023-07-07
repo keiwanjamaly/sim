@@ -43,8 +43,8 @@ double compute_time_from_start(clock_t start_clock) {
   return (double)(clock() - start_clock) / CLOCKS_PER_SEC;
 }
 
-extern "C" void compute(struct computation_data *data,
-                        struct return_data *return_struct) {
+extern "C" int compute(struct computation_data *data,
+                       struct return_data *return_struct) {
   int steps_to_save = return_struct->samples;
   double t_final = data->tir;
   double t_out;
@@ -126,7 +126,7 @@ extern "C" void compute(struct computation_data *data,
 
     if (status != CV_SUCCESS) {
       printf("Error: something went wrong! CVODE error code %d\n", status);
-      exit(-1);
+      return -1;
     }
     // save after each step
     left_point = left_boundary(data->computation_grid, u_output_pointer);
@@ -147,4 +147,5 @@ extern "C" void compute(struct computation_data *data,
   SUNLinSolFree(lin_sol);
   CVodeFree(&package_mem);
   SUNContext_Free(&sunctx);
+  return 0;
 }
