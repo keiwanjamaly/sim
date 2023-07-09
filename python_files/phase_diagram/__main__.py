@@ -17,7 +17,7 @@ def main():
     parser.add_argument('-L', type=float,
                         help='Set the UV Cutoff', required=True, default=None)
     parser.add_argument('--delta', type=float,
-                        help='sets the resolution for the phase diagram', default=0.02)
+                        help='sets the resolution for the phase diagram', default=0.01)
 
     args = parser.parse_args()
     phase_diagram_resolution = args.delta
