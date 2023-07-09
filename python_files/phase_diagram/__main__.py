@@ -4,7 +4,7 @@ import h5py
 import argparse
 from python_files.gross_neveu.couplings.couplings_io import get_exact_coupling_from_file
 from python_files.gross_neveu.couplings.couplings_io import generate_filename
-from python_files.phase_diagram.computation_function import compute_sigma_spread
+from python_files.phase_diagram.computation_function import compute_sigma_spread, compute_sigma
 from python_files.gross_neveu.Gross_Neveu import get_model
 
 
@@ -60,7 +60,10 @@ def main():
                              Lambda, kir, delta_sigma, N_Flavor, h, sigma_0, lock])
 
     with Pool() as p:
-        result = p.map(compute_sigma_spread, job_list)
+        # result = p.map(compute_sigma_spread, job_list)
+        multiple_results = [p.apply_async(
+            compute_sigma, job) for job in job_list]
+        result = [res.get() for res in multiple_results]
 
     with h5py.File(f'./data/phase_diagram/phase_diagram_Lambda_{Lambda}_N_Flavor_{N_Flavor}.hdf5', "w") as f:
         f.attrs["coupling"] = one_over_g2
