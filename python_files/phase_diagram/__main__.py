@@ -5,6 +5,7 @@ import argparse
 from python_files.gross_neveu.couplings.couplings_io import get_exact_coupling_from_file
 from python_files.gross_neveu.couplings.couplings_io import generate_filename
 from python_files.phase_diagram.computation_function import compute_sigma_spread
+from python_files.gross_neveu.Gross_Neveu import get_model
 
 
 def main():
@@ -36,8 +37,12 @@ def main():
         f'with {len(T_array)} points in T direction and {len(mu_array)} points in mu direction')
     print(f'total number of points is {len(T_array) * len(mu_array)}')
 
-    filename = generate_filename(Lambda, N_Flavor, "./data")
-    one_over_g2 = get_exact_coupling_from_file(filename)
+    if args.N == -1:
+        one_over_g2 = get_model(2).calculate_one_g2(
+            h=1.0, sigma_0=1.0, Lambda=Lambda)
+    else:
+        filename = generate_filename(Lambda, N_Flavor, "./data")
+        one_over_g2 = get_exact_coupling_from_file(filename)
     dimension = 2
     sigma_max = 2000
     kir = 1e-2
