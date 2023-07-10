@@ -14,13 +14,13 @@ def sigma(one_over_g2: float, dimension: int, mu: float, T: float, sigma_max, La
 
     if model.computation_status_code == 0:
         pass
-    elif model.computation_status_code == -1:
+    elif model.computation_status_code == -4:
         print(
             f'Calculation exited for mu = {mu}, T = {T}. Using -1 as a result')
         return -1
     else:
         raise RuntimeError(
-            f'error code {model.computation_status_code} is not handlede. ')
+            f'error code {model.computation_status_code} is not handled.')
 
     y = model.return_data.solution
     x = model.return_data.grid
