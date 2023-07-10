@@ -8,15 +8,9 @@ def compute_sigma_spread(x):
 
 def compute_sigma(one_over_g2, dimension, mu, T, sigma_max,
                   Lambda, kir, delta_sigma, N_Flavor, h, sigma_0):
-    try:
-        result = sigma(one_over_g2, dimension, mu, T, sigma_max,
-                       Lambda, kir, delta_sigma, N_Flavor, h, sigma_0)
+    result = sigma(one_over_g2, dimension, mu, T, sigma_max,
+                   Lambda, kir, delta_sigma, N_Flavor, h, sigma_0)
 
-        # with lock:
-        print(f'mu = {mu}, T = {T}, result = {result} - done')
-    except:
-        result = -1
-        # with lock:
-        print(f'mu = {mu}, T = {T} result = {result}- error')
+    print(f'mu = {mu}, T = {T}, result = {result} - done')
 
     return mu, T, result

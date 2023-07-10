@@ -3,7 +3,7 @@ from python_files.data_class import DataClass
 from python_files.grid_creator import create_inhomogenious_grid_from_cell_spacing
 
 
-def sigma(one_over_g2: float, dimension: int, mu: float, T:float, sigma_max, Lambda, kir,
+def sigma(one_over_g2: float, dimension: int, mu: float, T: float, sigma_max, Lambda, kir,
           delta_sigma, N_Flavor, h, sigma_0):
     samples = 3
     grid_points = create_inhomogenious_grid_from_cell_spacing(
@@ -11,6 +11,16 @@ def sigma(one_over_g2: float, dimension: int, mu: float, T:float, sigma_max, Lam
     model = get_model(dimension)
     model = model(grid_points, Lambda, kir, samples,
                   mu, T, N_Flavor, h, one_over_g2, sigma_0)
+
+    if model.computation_status_code == 0:
+        pass
+    elif model.computation_status_code == -1:
+        print(
+            f'Calculation exited for mu = {mu}, T = {T}. Using -1 as a result')
+        return -1
+    else:
+        raise RuntimeError(
+            f'error code {model.computation_status_code} is not handlede. ')
 
     y = model.return_data.solution
     x = model.return_data.grid

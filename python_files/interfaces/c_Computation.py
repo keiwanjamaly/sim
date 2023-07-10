@@ -16,8 +16,8 @@ class Computation_Interface(Structure):
         self.compute.restype = c_int
 
         result = self.compute(computation_data, return_data)
-        if result != 0:
-            raise RuntimeError()
+
+        self.computation_status = result
 
 
 def main():

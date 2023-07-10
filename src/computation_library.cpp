@@ -126,7 +126,7 @@ extern "C" int compute(struct computation_data *data,
 
     if (status != CV_SUCCESS) {
       printf("Error: something went wrong! CVODE error code %d\n", status);
-      return -1;
+      return status;
     }
     // save after each step
     left_point = left_boundary(data->computation_grid, u_output_pointer);
