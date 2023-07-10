@@ -58,8 +58,10 @@ class GN_1p1():
             self.lib, Lambda, kir, grid.pointer, physics_data.pointer,
             self.tolerances)
 
-        Computation_Interface(
+        self.computation = Computation_Interface(
             self.lib, computation_data.pointer, self.return_data.pointer)
+
+        self.computation_status_code = self.computation.computation_status
 
     @classmethod
     def calculate_one_g2(cls, h, sigma_0, Lambda) -> float:
