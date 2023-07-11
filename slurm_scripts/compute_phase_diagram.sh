@@ -3,7 +3,7 @@
 #SBATCH --partition=general1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=80
-#SBATCH --mem-per-cpu=512   
+#SBATCH --mem-per-cpu=1024   
 #SBATCH --time=7-00:00:00
 #SBATCH --mail-type=FAIL
 
