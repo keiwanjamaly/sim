@@ -1,18 +1,13 @@
 # from multiprocessing import Pool, Manager
-from joblib import Parallel, delayed
 import numpy as np
-import h5py
 import argparse
-from python_files.gross_neveu.couplings.couplings_io import get_exact_coupling_from_file
-from python_files.gross_neveu.couplings.couplings_io import generate_filename
-from python_files.phase_diagram.computation_function import compute_sigma_spread, compute_sigma
-from python_files.gross_neveu.Gross_Neveu import get_model
+from python_files.phase_diagram.phase_diagram_computation import phase_diagram_computationa
+from python_files.phase_diagram.plot_phase_diagram import density_plot, get_result
+from python_files.phase_diagram.phase_boundary import compute_phase_boundary, plot_phase_boundary, plot_tolerance, liftschitz_point
+import matplotlib.pyplot as plt
 
 
 def main():
-    mu_max = 1.2
-    T_max = 1.0
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-N', type=int, help='Set the number of flavors', required=True, default=None)
@@ -20,11 +15,17 @@ def main():
                         help='Set the UV Cutoff', required=True, default=None)
     parser.add_argument('--delta', type=float,
                         help='sets the resolution for the phase diagram', default=0.01)
-
+    parser.add_argument(
+        '--plot', help='plot the phase diagram instead of calculating it', action='store_true')
+    parser.add_argument(
+        '--tol', help='set the tolerance for the phase diagram computation or set the tolerance for the liftischt point computation', type=float, default=None)
+    parser.add_argument(
+        '--tol_min', help='set the minimum tolerance for the liftschitz point array', type=float, default=None)
+    parser.add_argument(
+        '--tol_max', help='set the maximum tolerance for the liftschitz point array', type=float, default=None)
+    parser.add_argument(
+        '--liftschitz', help='compute the liftschitz point', action='store_true')
     args = parser.parse_args()
-    phase_diagram_resolution = args.delta
-    mu_array = np.arange(0, mu_max, phase_diagram_resolution)
-    T_array = np.arange(0.01, T_max, phase_diagram_resolution)
 
     if args.N == -1:
         N_Flavor = np.inf
@@ -32,45 +33,33 @@ def main():
         N_Flavor = args.N
     Lambda = args.L
 
-    print(
-        f'computing phase diagram for N_Flavor = {N_Flavor} and Lambda = {Lambda}.')
-    print(
-        f'with {len(T_array)} points in T direction and {len(mu_array)} points in mu direction')
-    print(f'total number of points is {len(T_array) * len(mu_array)}')
+    if args.liftschitz:
+        result = get_result(Lambda, N_Flavor)
+        if args.tol is not None:
+            mu, T = liftschitz_point(result, args.tol)
+            print(mu, T)
+        elif args.tol_min is not None and args.tol_max is not None:
+            tol_array = np.arange(args.tol_min, args.tol_max, 0.1)
+            plot_tolerance(result, tol_array)
+        else:
+            raise RuntimeError(
+                "Tolerance has to be defined by --tol when computing the liftschitz point")
+    elif args.plot:
+        result = get_result(Lambda, N_Flavor)
+        density_plot(result)
+        if args.tol is not None:
+            boundary_first_order, boundary_second_order = compute_phase_boundary(
+                result, args.tol)
+            plot_phase_boundary(boundary_first_order, boundary_second_order)
 
-    if args.N == -1:
-        one_over_g2 = get_model(2).calculate_one_g2(
-            h=1.0, sigma_0=1.0, Lambda=Lambda)
+        # other plot parameters
+        plt.title(f'{Lambda=}, {N_Flavor=}')
+        plt.xlabel(r'$\mu$')
+        plt.ylabel(r'$T$')
+        plt.show()
     else:
-        filename = generate_filename(Lambda, N_Flavor, "./data")
-        one_over_g2 = get_exact_coupling_from_file(filename)
-    dimension = 2
-    sigma_max = 2000
-    kir = 1e-2
-    delta_sigma = 0.006
-    h = 1.0
-    sigma_0 = 1.0
-
-    job_list = []
-    # manager = Manager()
-    # lock = manager.Lock()
-
-    for mu in mu_array:
-        for T in T_array:
-            job_list.append([one_over_g2, dimension, mu, T, sigma_max,
-                             Lambda, kir, delta_sigma, N_Flavor, h, sigma_0])
-
-    result = Parallel(n_jobs=-1, verbose=10)(
-        delayed(compute_sigma_spread)(x) for x in job_list)
-    # with Pool() as p:
-    #     # result = p.map(compute_sigma_spread, job_list)
-    #     multiple_results = [p.apply_async(
-    #         compute_sigma, job) for job in job_list]
-    #     result = [res.get() for res in multiple_results]
-
-    with h5py.File(f'./data/phase_diagram/phase_diagram_Lambda_{Lambda}_N_Flavor_{N_Flavor}.hdf5', "w") as f:
-        f.attrs["coupling"] = one_over_g2
-        f.create_dataset("phase_diagram", data=result)
+        phase_diagram_resolution = args.delta
+        phase_diagram_computationa(Lambda, N_Flavor, phase_diagram_resolution)
 
 
 if __name__ == "__main__":
