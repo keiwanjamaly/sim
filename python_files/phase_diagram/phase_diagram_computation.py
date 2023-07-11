@@ -2,7 +2,7 @@ import numpy as np
 from python_files.gross_neveu.Gross_Neveu import get_model
 from python_files.gross_neveu.couplings.couplings_io import get_exact_coupling_from_file
 from python_files.gross_neveu.couplings.couplings_io import generate_filename
-from python_files.phase_diagram.computation_function import compute_sigma_spread, compute_sigma
+from python_files.phase_diagram.computation_function import compute_u, compute_sigma
 import h5py
 from joblib import Parallel, delayed
 
@@ -43,13 +43,16 @@ def phase_diagram_computationa(Lambda, N_Flavor, phase_diagram_resolution):
                              Lambda, kir, delta_sigma, N_Flavor, h, sigma_0])
 
     result = Parallel(n_jobs=-1, verbose=10)(
-        delayed(compute_sigma_spread)(x) for x in job_list)
-    # with Pool() as p:
-    #     # result = p.map(compute_sigma_spread, job_list)
-    #     multiple_results = [p.apply_async(
-    #         compute_sigma, job) for job in job_list]
-    #     result = [res.get() for res in multiple_results]
+        delayed(compute_u)(*x) for x in job_list)
 
     with h5py.File(f'./data/phase_diagram/phase_diagram_Lambda_{Lambda}_N_Flavor_{N_Flavor}.hdf5', "w") as f:
         f.attrs["coupling"] = one_over_g2
-        f.create_dataset("phase_diagram", data=result)
+        f.create_dataset("grid", data=result[0][2])
+        dset = f.create_dataset(
+            "u", (len(result), len(result[0][3])), dtype=float)
+        phase_diagram = f.create_dataset(
+            "phase_diagram", (len(result), 2), dtype=float)
+        for index in range(len(result)):
+            phase_diagram[index, 0] = result[index][0]
+            phase_diagram[index, 1] = result[index][1]
+            dset[index, :] = result[index][3][:]
