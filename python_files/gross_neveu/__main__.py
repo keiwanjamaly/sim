@@ -3,6 +3,7 @@ from python_files.grid_creator import create_homogenious_grid, create_inhomogeni
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+from python_files.data_class import Potential
 
 
 def main():
@@ -29,7 +30,7 @@ def main():
     delta_sigma = 0.006
     Lambda = args.L
     kir = args.k
-    samples = 10
+    samples = 1000
     mu = args.mu
     T = args.T
     N_Flavor = args.N if args.N is not None else np.inf
@@ -46,13 +47,29 @@ def main():
 
     xmax_show = 2
     x = np.array(sol.return_data.grid)
-    y = np.array(sol.return_data.solution[-1])[x <= xmax_show]
-    x = x[x <= xmax_show]
+    y_show = np.array(sol.return_data.solution[-1])[x <= xmax_show]
+    x_show = x[x <= xmax_show]
 
-    plt.plot(x, y)
-    plt.xlabel(r'$\sigma$')
-    plt.ylabel(r'u')
-    plt.grid()
+    potentials = [Potential(x, y) for time, y in zip(
+        sol.return_data.time, sol.return_data.solution)]
+    potential = potentials[-1]
+
+    fig, (u_plot, U_plot, sigma_0_plot) = plt.subplots(1, 3, tight_layout=True)
+    u_plot.plot(x_show, y_show)
+    u_plot.set_xlabel(r'$\sigma$')
+    u_plot.set_ylabel(r'u')
+    u_plot.grid()
+
+    U_plot.plot(x_show, potential.U(x_show))
+    U_plot.set_xlabel(r'$\sigma$')
+    U_plot.set_ylabel(r'U')
+
+    sigma_0_plot.plot(Lambda * np.exp(-np.array(sol.return_data.time)), [
+                      elem.sigma for elem in potentials])
+    sigma_0_plot.set_xscale('log')
+    sigma_0_plot.set_xlabel('t')
+    sigma_0_plot.set_ylabel(r'$\sigma_0$')
+
     plt.show()
 
 

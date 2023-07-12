@@ -1,5 +1,5 @@
 from python_files.gross_neveu.Gross_Neveu import get_model
-from python_files.data_class import DataClass
+from python_files.data_class import Potential
 from python_files.grid_creator import create_inhomogenious_grid_from_cell_spacing
 import numpy as np
 
@@ -27,10 +27,10 @@ def sigma(one_over_g2: float, dimension: int, mu: float, T: float, sigma_max, La
     x = model.return_data.grid
     time = model.return_data.time
 
-    data_class = DataClass(x, time, y)
-    sigma_0_ir = data_class.sigma_0[-1]
+    potential = Potential(x, y[-1])
+    sigma = potential.sigma
 
-    return sigma_0_ir
+    return sigma
 
 
 def compute_u(one_over_g2, dimension, mu, T, sigma_max,
