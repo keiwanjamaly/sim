@@ -28,7 +28,7 @@ def phase_diagram_computationa(Lambda, N_Flavor, phase_diagram_resolution):
         one_over_g2 = get_exact_coupling_from_file(filename)
     dimension = 2
     sigma_max = 2000
-    kir = 1e-2
+    kir = 1e-1
     delta_sigma = 0.006
     h = 1.0
     sigma_0 = 1.0

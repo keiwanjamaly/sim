@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # list=(10 200 500 1000)
-list=(20 30 40 50)
+# list=(20 30 40 50)
+list=(50 100 1500 2000)
 
 for ((i = 11; i < 17; i++)); do
   for j in "${list[@]}"; do
