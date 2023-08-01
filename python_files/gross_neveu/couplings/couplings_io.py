@@ -4,15 +4,20 @@ import numpy as np
 import re
 from python_files.gross_neveu.Gross_Neveu import get_model
 
+
 def get_all_cutoffs_with_more_than_two_couplings(dir: str):
     all_files = os.listdir(dir)
-    filtered_files = filter(lambda x: x.startswith(f'couplings_Lambda='), all_files)
-    Lambdas = map(lambda x: float(re.search("[0-9]*\\.[0-9]*", x)[0]), filtered_files)
+    filtered_files = filter(lambda x: x.startswith(
+        f'couplings_Lambda='), all_files)
+    Lambdas = map(lambda x: float(
+        re.search("[0-9]*\\.[0-9]*", x)[0]), filtered_files)
     return list(set(Lambdas))
+
 
 def get_computed_couplings_from_file(Lambda: float, dir: str):
     all_files = os.listdir(dir)
-    filtered_files = filter(lambda x: x.startswith(f'couplings_Lambda={Lambda}_'), all_files)
+    filtered_files = filter(lambda x: x.startswith(
+        f'couplings_Lambda={Lambda}_'), all_files)
     couplings = []
     flavors = []
     for filename in filtered_files:
@@ -65,16 +70,19 @@ class NoCouplingComputed(Exception):
 def coupling_fit_function(x, a, coupling_mf):
     return coupling_mf * np.arctan(a*x) * 2 / np.pi
 
+
 def get_all_pre_computed_alphas_and_lambdas(dir: str):
     with h5py.File(os.path.join(dir, 'couping_pre_computations.hdf5'), "r") as f:
         Lambdas = f["couplings"][:, 0]
         alphas = f["couplings"][:, 1]
+        alpha_error = f["couplings"][:, 3]
 
     Lambdas = list(Lambdas)
     alphas = list(alphas)
-    alphas = sorted(alphas, key = lambda e: Lambdas[alphas.index(e)])
+    alphas = sorted(alphas, key=lambda e: Lambdas[alphas.index(e)])
     Lambdas = sorted(Lambdas)
-    return Lambdas, alphas
+    return Lambdas, alphas, alpha_error
+
 
 def get_pre_computed_coupling_from_file(Lambda: float, N_Flavor: float, dir: str):
     with h5py.File(os.path.join(dir, 'couping_pre_computations.hdf5'), "r") as f:
@@ -87,7 +95,8 @@ def get_pre_computed_coupling_from_file(Lambda: float, N_Flavor: float, dir: str
 
 
 def generate_filename(Lambda: float, N_Flavor: float, dir: str):
-    filename = os.path.join(dir, f'couplings_Lambda={Lambda}_N={N_Flavor}.hdf5')
+    filename = os.path.join(
+        dir, f'couplings_Lambda={Lambda}_N={N_Flavor}.hdf5')
     return filename
 
 

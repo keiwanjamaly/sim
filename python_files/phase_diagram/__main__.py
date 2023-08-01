@@ -1,9 +1,13 @@
 # from multiprocessing import Pool, Manager
 import numpy as np
 import argparse
-from python_files.phase_diagram.phase_diagram_computation import phase_diagram_computationa
-from python_files.phase_diagram.plot_phase_diagram import density_plot, get_result
-from python_files.phase_diagram.phase_boundary import compute_phase_boundary, plot_phase_boundary, plot_tolerance, liftschitz_point
+from python_files.phase_diagram.plot_phase_diagram import plot_observables
+from python_files.phase_diagram.compute_observables import compute_observables
+from python_files.phase_diagram.plots_for_poster import plots_poster
+from python_files.phase_diagram.plot_single_potential import plot_potential
+from python_files.phase_diagram.phase_diagram_computation import phase_diagram_computation
+# from python_files.phase_diagram.contour_computations import compute_contour
+from python_files.phase_diagram.compute_phase_boundary import compute_boundary
 import matplotlib.pyplot as plt
 
 
@@ -18,48 +22,60 @@ def main():
     parser.add_argument(
         '--plot', help='plot the phase diagram instead of calculating it', action='store_true')
     parser.add_argument(
-        '--tol', help='set the tolerance for the phase diagram computation or set the tolerance for the liftischt point computation', type=float, default=None)
+        '--save', help='set the output file type', type=argparse.FileType('w', encoding='latin-1'))
     parser.add_argument(
-        '--tol_min', help='set the minimum tolerance for the liftschitz point array', type=float, default=None)
+        '--save_LP', help='file of the LP to save', type=argparse.FileType('w', encoding='latin-1'))
     parser.add_argument(
-        '--tol_max', help='set the maximum tolerance for the liftschitz point array', type=float, default=None)
+        '--compute', help='compute observables of phase diagram', action='store_true')
     parser.add_argument(
-        '--liftschitz', help='compute the liftschitz point', action='store_true')
+        '--poster', help='create plots for the poster', action='store_true')
+    parser.add_argument(
+        '--potential', help='plot a single potential', nargs=2, type=float)
+    parser.add_argument(
+        '--mf_contour', help='calculate the contour of the mean field phase diagram', action='store_true')
+    parser.add_argument(
+        '--boundary', help='calculate the phase boundary', action='store_true')
     args = parser.parse_args()
 
     if args.N == -1:
         N_Flavor = np.inf
     else:
         N_Flavor = args.N
-    Lambda = args.L
-
-    if args.liftschitz:
-        result = get_result(Lambda, N_Flavor)
-        if args.tol is not None:
-            mu, T = liftschitz_point(result, args.tol)
-            print(mu, T)
-        elif args.tol_min is not None and args.tol_max is not None:
-            tol_array = np.arange(args.tol_min, args.tol_max, 0.1)
-            plot_tolerance(result, tol_array)
-        else:
-            raise RuntimeError(
-                "Tolerance has to be defined by --tol when computing the liftschitz point")
-    elif args.plot:
-        result = get_result(Lambda, N_Flavor)
-        density_plot(result)
-        if args.tol is not None:
-            boundary_first_order, boundary_second_order = compute_phase_boundary(
-                result, args.tol)
-            plot_phase_boundary(boundary_first_order, boundary_second_order)
-
-        # other plot parameters
-        plt.title(f'{Lambda=}, {N_Flavor=}')
-        plt.xlabel(r'$\mu$')
-        plt.ylabel(r'$T$')
-        plt.show()
+    if args.L == -1:
+        Lambda = np.inf
     else:
+        Lambda = args.L
+
+    skip_computation = False
+
+    # if args.mf_contour:
+    #     compute_contour()
+    #     skip_computation = True
+
+    if args.potential:
+        mu, T = args.potential
+        plot_potential(mu, T, Lambda, N_Flavor)
+        skip_computation = True
+
+    if args.poster:
+        plots_poster()
+        skip_computation = True
+
+    if args.compute:
+        compute_observables(Lambda, N_Flavor)
+        skip_computation = True
+
+    if args.plot:
+        plot_observables(Lambda, N_Flavor, args.save)
+        skip_computation = True
+
+    if args.boundary:
+        compute_boundary(Lambda, N_Flavor, args.save, args.save_LP)
+        skip_computation = True
+
+    if not skip_computation:
         phase_diagram_resolution = args.delta
-        phase_diagram_computationa(Lambda, N_Flavor, phase_diagram_resolution)
+        phase_diagram_computation(Lambda, N_Flavor, phase_diagram_resolution)
 
 
 if __name__ == "__main__":

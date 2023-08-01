@@ -7,7 +7,7 @@ import h5py
 from joblib import Parallel, delayed
 
 
-def phase_diagram_computationa(Lambda, N_Flavor, phase_diagram_resolution):
+def phase_diagram_computation(Lambda, N_Flavor, phase_diagram_resolution):
     mu_max = 1.2
     T_max = 1.0
 
