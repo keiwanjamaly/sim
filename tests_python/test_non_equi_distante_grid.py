@@ -14,6 +14,7 @@ def test_Gross_Neveu():
     Lambda = 100
     kir = 1e-1
     grid_points = np.arange(0.0, sigma_max, delta_sigma)
+    print(f'grid points linear are {len(grid_points)}')
     model_linear = GN_2p1(grid_points, Lambda, kir, samples,
                           mu, T, N_Flavor, h=1.0, sigma_0=1.0)
     y_linear = model_linear.return_data.solution[-1]
@@ -22,6 +23,7 @@ def test_Gross_Neveu():
 
     grid_points = create_inhomogenious_grid_from_cell_spacing(
         sigma_max, delta_sigma)
+    print(f'grid points non-linear are {len(grid_points)}')
     model_non_linear = GN_2p1(grid_points, Lambda, kir, samples,
                               mu, T, N_Flavor, h=1.0, sigma_0=1.0)
 

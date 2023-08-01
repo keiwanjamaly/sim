@@ -1,8 +1,6 @@
 from python_files.phase_diagram.file_io import get_filename
-from scipy.optimize import root
 import h5py
 from python_files.data_class import Potential
-from python_files.phase_diagram.plot_phase_diagram import create_interpolation
 
 
 def compute_sigma(file: h5py.File, potentials: list[Potential]):
@@ -35,27 +33,6 @@ def compute_forth_div_at_zero(file: h5py.File, potentials: list[Potential]):
         file.create_dataset('forth_div_at_zero',
                             (len(forth_divs_at_zero)), dtype=float)
     file['forth_div_at_zero'][:] = forth_divs_at_zero
-
-
-def compute_liftschitz(mu_array, T_array, second_div_at_zero, forth_div_at_zero):
-    interpolation_second_div_at_zero = create_interpolation(
-        mu_array, T_array, second_div_at_zero)
-    interpolation_forth_div_at_zero = create_interpolation(
-        mu_array, T_array, forth_div_at_zero)
-
-    def f(arg):
-        x, y = arg
-        return interpolation_second_div_at_zero(x, y), interpolation_forth_div_at_zero(x, y)
-
-    tol = None
-    x0 = [9.921e-01, 3.157e-02]
-    result = root(f, x0=x0, tol=tol)
-    if not result.success:
-        x0 = [0.9, 0.2]
-        result = root(f, x0=x0, tol=tol)
-
-    print(result)
-    return result.x
 
 
 def compute_observables(Lambda, N_Flavor):
