@@ -70,7 +70,7 @@ def compute_boundary(Lambda, N_Flavor, save: io.TextIOWrapper, save_LP: io.TextI
         job_list.append([Lambda, N_Flavor, angle, 0.5, 1.2, (0, 0.01)])
         # print(f'done - {i}/{len(angles)-1}')
 
-    results = Parallel(n_jobs=-1, verbose=10)(
+    results = Parallel(n_jobs=-1, verbose=20, batch_size=1)(
         delayed(compute_ray)(*x) for x in job_list)
     mus = []
     Ts = []
