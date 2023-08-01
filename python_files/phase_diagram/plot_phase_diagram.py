@@ -10,7 +10,6 @@ import numpy as np
 from python_files.phase_diagram.file_io import get_filename
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely import geometry
-from skimage import measure
 
 
 def get_result(Lambda, N_Flavor):

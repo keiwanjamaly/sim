@@ -13,3 +13,5 @@ CMakeFiles
 imgui.ini
 
 .DS_Store
+
+slurm_scripts/*.out
