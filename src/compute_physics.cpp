@@ -1,4 +1,5 @@
 #include "compute_physics.h"
+#include <alloca.h>
 #include <math.h>
 
 double cal_k(double t, struct computation_data *data) {
@@ -10,6 +11,8 @@ void add_diffusion(double t, double k, double *grid, double *u, double *u_dot,
   double u_boundary;
   double *dx = input_data->computation_grid->dx;
   double *dx_midpoints = input_data->computation_grid->dx_midpoints;
+  // double *u_x = (double *)alloca((N + 1) * sizeof(double));
+  // double *Q_cal = (double *)alloca((N + 1) * sizeof(double));
   double *u_x = (double *)malloc((N + 1) * sizeof(double));
   double *Q_cal = (double *)malloc((N + 1) * sizeof(double));
 

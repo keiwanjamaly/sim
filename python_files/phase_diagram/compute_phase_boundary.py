@@ -20,8 +20,6 @@ def get_curve_point(t, angle, r_min, r_max, origin):
 
 
 def compute_point(Lambda, N_Flavor, mu, T):
-    mu_max = 1.2
-    T_max = 1.0
     if np.isinf(N_Flavor):
         one_over_g2 = get_model(2).calculate_one_g2(
             h=1.0, sigma_0=1.0, Lambda=Lambda)

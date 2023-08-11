@@ -6,6 +6,7 @@ from python_files.phase_diagram.compute_observables import compute_observables
 from python_files.phase_diagram.plots_for_poster import plots_poster
 from python_files.phase_diagram.plot_single_potential import plot_potential
 from python_files.phase_diagram.phase_diagram_computation import phase_diagram_computation
+from python_files.phase_diagram.save_phase_diagram import save_final_phase_diagram_to_file
 # from python_files.phase_diagram.contour_computations import compute_contour
 from python_files.phase_diagram.compute_phase_boundary import compute_boundary
 import matplotlib.pyplot as plt
@@ -35,6 +36,8 @@ def main():
         '--mf_contour', help='calculate the contour of the mean field phase diagram', action='store_true')
     parser.add_argument(
         '--boundary', help='calculate the phase boundary', action='store_true')
+    parser.add_argument(
+        '-f', help='filename of the h5py file', type=str)
     args = parser.parse_args()
 
     if args.N == -1:
@@ -48,6 +51,9 @@ def main():
 
     skip_computation = False
 
+    if args.f is not None and args.save is not None:
+        save_final_phase_diagram_to_file(args.f, args.save)
+        skip_computation = True
     # if args.mf_contour:
     #     compute_contour()
     #     skip_computation = True

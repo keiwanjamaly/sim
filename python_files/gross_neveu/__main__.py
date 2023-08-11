@@ -1,5 +1,6 @@
 from python_files.gross_neveu.Gross_Neveu import get_model
 from python_files.grid_creator import create_homogenious_grid, create_inhomogenious_grid_from_cell_spacing
+from python_files.gross_neveu.couplings.couplings_io import get_closest_coupling_approximation_or_MF_coupling
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,6 +25,8 @@ def main():
     parser.add_argument(
         '-d', type=int, help='sigma max', default=1
     )
+    parser.add_argument(
+        '-stdout', help='write the results to stdout', action='store_true')
 
     args = parser.parse_args()
     sigma_max = args.max
@@ -42,35 +45,46 @@ def main():
         grid_points = create_inhomogenious_grid_from_cell_spacing(
             sigma_max, delta_sigma)
 
+    one_over_g2 = get_closest_coupling_approximation_or_MF_coupling(
+        Lambda, N_Flavor, './data', args.d)
+
     sol = get_model(args.d)(grid_points, Lambda, kir,
-                            samples, mu, T, N_Flavor=N_Flavor)
+                            samples, mu, T, N_Flavor=N_Flavor, one_over_g2=one_over_g2)
 
-    xmax_show = 2
     x = np.array(sol.return_data.grid)
-    y_show = np.array(sol.return_data.solution[-1])[x <= xmax_show]
-    x_show = x[x <= xmax_show]
-
     potentials = [Potential(x, y) for time, y in zip(
         sol.return_data.time, sol.return_data.solution)]
     potential = potentials[-1]
+    U = potential.U(x)
 
-    fig, (u_plot, U_plot, sigma_0_plot) = plt.subplots(1, 3, tight_layout=True)
-    u_plot.plot(x_show, y_show)
-    u_plot.set_xlabel(r'$\sigma$')
-    u_plot.set_ylabel(r'u')
-    u_plot.grid()
+    xmax_show = 1.2
+    y_show = np.array(sol.return_data.solution[-1])[x <= xmax_show]
+    x_show = x[x <= xmax_show]
+    U_show = np.array(U)[x <= xmax_show]
 
-    U_plot.plot(x_show, potential.U(x_show))
-    U_plot.set_xlabel(r'$\sigma$')
-    U_plot.set_ylabel(r'U')
+    if not args.stdout:
+        fig, (u_plot, U_plot, sigma_0_plot) = plt.subplots(
+            1, 3, tight_layout=True)
+        u_plot.plot(x_show, y_show)
+        u_plot.set_xlabel(r'$\sigma$')
+        u_plot.set_ylabel(r'u')
+        u_plot.grid()
 
-    sigma_0_plot.plot(Lambda * np.exp(-np.array(sol.return_data.time)), [
-                      elem.sigma for elem in potentials])
-    sigma_0_plot.set_xscale('log')
-    sigma_0_plot.set_xlabel('t')
-    sigma_0_plot.set_ylabel(r'$\sigma_0$')
+        U_plot.plot(x_show, potential.U(x_show))
+        U_plot.set_xlabel(r'$\sigma$')
+        U_plot.set_ylabel(r'U')
 
-    plt.show()
+        sigma_0_plot.plot(Lambda * np.exp(-np.array(sol.return_data.time)), [
+                          elem.sigma for elem in potentials])
+        sigma_0_plot.set_xscale('log')
+        sigma_0_plot.set_xlabel('t')
+        sigma_0_plot.set_ylabel(r'$\sigma_0$')
+
+        plt.show()
+    else:
+        for sigma, u, U in zip(x_show, y_show, U_show):
+            if u >= -5e-3 and u <= 2e-4:
+                print(sigma, u, U, sep='\t')
 
 
 if __name__ == "__main__":

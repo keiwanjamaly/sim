@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.polynomial.polynomial import Polynomial
 from scipy.integrate import cumulative_trapezoid
 from typing import Tuple
 from scipy.interpolate import interp1d
@@ -38,7 +39,8 @@ class Potential:
         self.u = u
         self.interval = self.__compute_sign_change_interval()
         self.U = self.__compute_potential()
-        self.sigma = self.__sigma()
+        self.sigma, self.polynomial = self.__sigma()
+        self.pressure = -self.U(self.sigma)
         self.mass_square = self.__compute_curvature_mass_square()
         self.second_div_at_zero = self.__compute_second_div_at_zero()
         self.forth_div_at_zero = self.__compute_forth_div_at_zero()
@@ -55,32 +57,60 @@ class Potential:
     def __compute_curvature_mass_square(self) -> float:
         lower_index, upper_index = self.interval
 
+        if (lower_index, upper_index) == (0, 1):
+            return self.__compute_second_div_at_zero()
+
+        polynomial = self.polynomial.deriv()
+        mass_square = polynomial(self.sigma)
+
         if (lower_index, upper_index) != (0, 1):
             lower_index, upper_index = lower_index + 1, upper_index + 1
-        else:
-            return 0
 
         lower_point, upper_point = self.grid[lower_index], self.grid[upper_index]
         lower_u, upper_u = self.u[lower_index], self.u[upper_index]
 
         line = Line.from_points(upper_u, upper_point, lower_u, lower_point)
 
-        return line.m
+        # print(line.m, mass_square)
+
+        return mass_square
 
     def __calculate_position_of_root(self) -> float:
         lower_index, upper_index = self.interval
 
         if (lower_index, upper_index) == (0, 1):
-            return 0
+            polynomial = Polynomial.fit(self.grid[:2], self.u[:2], 1)
+            return 0, polynomial
 
         # Use the next interval for interpolation to account for potential non-analytic behavior of u
-        lower_index, upper_index = lower_index + 1, upper_index + 1
-        lower_point, upper_point = self.grid[lower_index], self.grid[upper_index]
-        lower_u, upper_u = self.u[lower_index], self.u[upper_index]
+        grid_points = self.grid[upper_index: upper_index + 3]
+        u_points = self.u[upper_index:upper_index + 3]
+        A = np.array([[grid_points[0]**2, grid_points[0], 1],
+                      [grid_points[1]**2, grid_points[1], 1],
+                      [grid_points[2]**2, grid_points[2], 1]])
+        result = np.flip(np.linalg.solve(A, u_points))
+        # print(result)
+        # print(u_points)
+        # polynomial = Polynomial.fit(grid_points, u_points, 2)
+        polynomial = Polynomial(result)
+        # print(polynomial.roots())
+        if type(polynomial.roots()[-1]) == np.complex128 or polynomial.roots()[-1] >= 1:
+            # polynomial = Polynomial.fit(grid_points[:-1], u_points[:-1], 1)
+            A = np.array([[grid_points[0], 1],
+                          [grid_points[1], 1]])
+            result = np.flip(np.linalg.solve(A, u_points[:-1]))
+            polynomial = Polynomial(result)
+        # lower_index, upper_index = lower_index + 1, upper_index + 1
+        # lower_point, upper_point = self.grid[lower_index], self.grid[upper_index]
+        # lower_u, upper_u = self.u[lower_index], self.u[upper_index]
+        #
+        # line = Line.from_points(upper_u, upper_point, lower_u, lower_point)
 
-        line = Line.from_points(upper_u, upper_point, lower_u, lower_point)
+        # print(line.get_root(), polynomial.roots())
+        # print(type(polynomial.roots()[-1]))
+        return polynomial.roots()[-1], polynomial
 
-        return line.get_root()
+        # return line.get_root()
 
     def __compute_potential(self):
         lower_index, upper_index = self.interval
@@ -133,9 +163,9 @@ class Potential:
         return interval
 
     def __sigma(self):
-        potential_root = self.__calculate_position_of_root()
+        potential_root, polynomial = self.__calculate_position_of_root()
         potential = self.U(potential_root)
         if potential < 0:
-            return potential_root
+            return potential_root, polynomial
 
-        return 0
+        return 0, polynomial
