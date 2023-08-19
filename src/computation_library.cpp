@@ -1,7 +1,9 @@
+#include <alloca.h>
 #include <cvode/cvode.h>
 #include <nvector/nvector_serial.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sunlinsol/sunlinsol_band.h>
 #include <sunmatrix/sunmatrix_band.h>
 #include <time.h>
@@ -22,7 +24,7 @@ int f_without_diffusion(double t, N_Vector u, N_Vector udot, void *input_data) {
   double *grid = user_data->computation_grid->grid_points;
   double *udot_data = N_VGetArrayPointer(udot);
 
-  compute_source(t, k, grid, udot_data, N, user_data);
+  compute_source(t, k, udot_data, user_data);
   return 0;
 }
 
@@ -34,13 +36,36 @@ int f_with_diffusion(double t, N_Vector u, N_Vector udot, void *input_data) {
   double *udot_data = N_VGetArrayPointer(udot);
   double *u_data = N_VGetArrayPointer(u);
 
-  compute_source(t, k, grid, udot_data, N, user_data);
-  add_diffusion(t, k, grid, u_data, udot_data, N, user_data);
+  compute_source(t, k, udot_data, user_data);
+  add_diffusion(t, k, u_data, udot_data, user_data);
   return 0;
 }
 
 double compute_time_from_start(clock_t start_clock) {
   return (double)(clock() - start_clock) / CLOCKS_PER_SEC;
+}
+
+void save_computation_step(struct computation_data *data,
+                           double *u_output_pointer, double t, int i,
+                           struct return_data *return_struct) {
+  double left_point = left_boundary(data->computation_grid, u_output_pointer);
+  double right_point = right_boundary(data->computation_grid, u_output_pointer);
+  int N = return_struct->grid_size;
+  double *source = (double *)malloc(N * sizeof(double));
+  double *diffusion = (double *)calloc(N, sizeof(double));
+  double k = cal_k(t, data);
+  source[0] = S(t, k, return_struct->grid[0], data->data);
+  compute_source(t, k, source + 1, data);
+  add_diffusion(t, k, u_output_pointer, diffusion + 1, data);
+  diffusion[N - 2] = diffusion[N - 3];
+  diffusion[N - 1] = diffusion[N - 2];
+  source[N - 1] = S(t, k, return_struct->grid[N - 1], data->data);
+
+  save_step(return_struct, i, u_output_pointer, t, left_point, right_point,
+            source, diffusion);
+
+  free(source);
+  free(diffusion);
 }
 
 extern "C" int compute(struct computation_data *data,
@@ -107,13 +132,13 @@ extern "C" int compute(struct computation_data *data,
 
   clock_t start_clock = clock();
 
-  // solve shit
-  double left_point, right_point;
   // save zeroth step
-  left_point = left_boundary(data->computation_grid, u_output_pointer);
-  right_point = right_boundary(data->computation_grid, u_output_pointer);
-  save_step(return_struct, 0, u_output_pointer, t_now, left_point, right_point);
-  for (int i = 1; i < steps_to_save; i++) {
+  int i = 0;
+  t_now = 0.0;
+  // save_step(return_struct, 0, u_output_pointer, t_now, left_point,
+  // right_point);
+  save_computation_step(data, u_output_pointer, t_now, i, return_struct);
+  for (i = 1; i < steps_to_save; i++) {
     t_out = dt * i;
     status = CV_TOO_MUCH_WORK;
     while (t_now < t_out && status == CV_TOO_MUCH_WORK) {
@@ -129,10 +154,7 @@ extern "C" int compute(struct computation_data *data,
       return status;
     }
     // save after each step
-    left_point = left_boundary(data->computation_grid, u_output_pointer);
-    right_point = right_boundary(data->computation_grid, u_output_pointer);
-    save_step(return_struct, i, u_output_pointer, t_now, left_point,
-              right_point);
+    save_computation_step(data, u_output_pointer, t_now, i, return_struct);
   }
 
   // destory plotting_library

@@ -50,12 +50,8 @@ void plot_Q(double *u, double t, LivePlottingData *plotting_data) {
 
   double k = cal_k(t, plotting_data->data);
   int N = computation_grid->N;
-  double *Q = (double *)malloc(N * sizeof(double));
-  for (int i = 0; i < N; i++) {
-    Q[i] = 0.0;
-  }
-  add_diffusion(t, k, computation_grid->grid_points, u, Q, N,
-                plotting_data->data);
+  double *Q = (double *)calloc(N, sizeof(double));
+  add_diffusion(t, k, u, Q, plotting_data->data);
 
   // calculate the maximum
   double maximum_of_Q = 0.0;
