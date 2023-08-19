@@ -7,8 +7,9 @@ from python_files.phase_diagram.plots_for_poster import plots_poster
 from python_files.phase_diagram.plot_single_potential import plot_potential
 from python_files.phase_diagram.phase_diagram_computation import phase_diagram_computation
 from python_files.phase_diagram.save_phase_diagram import save_final_phase_diagram_to_file
-# from python_files.phase_diagram.contour_computations import compute_contour
 from python_files.phase_diagram.compute_phase_boundary import compute_boundary
+from python_files.phase_diagram.compute_phase_boundary import compute_boundary_mu0
+from python_files.phase_diagram.compute_phase_boundary import compute_boundary_reference
 import matplotlib.pyplot as plt
 
 
@@ -20,6 +21,8 @@ def main():
                         help='Set the UV Cutoff', required=True, default=None)
     parser.add_argument('--delta', type=float,
                         help='sets the resolution for the phase diagram', default=0.01)
+    parser.add_argument('-kir', type=float,
+                        help='set the IR cutoff for the phase boundary calculation', default=1e-2)
     parser.add_argument(
         '--plot', help='plot the phase diagram instead of calculating it', action='store_true')
     parser.add_argument(
@@ -36,6 +39,8 @@ def main():
         '--mf_contour', help='calculate the contour of the mean field phase diagram', action='store_true')
     parser.add_argument(
         '--boundary', help='calculate the phase boundary', action='store_true')
+    parser.add_argument(
+        '--boundary_mu0', help='compute the phase boundary for mu = 0 and multiple flavors', action='store_true')
     parser.add_argument(
         '-f', help='filename of the h5py file', type=str)
     args = parser.parse_args()
@@ -76,7 +81,11 @@ def main():
         skip_computation = True
 
     if args.boundary:
-        compute_boundary(Lambda, N_Flavor, args.save, args.save_LP)
+        compute_boundary(Lambda, N_Flavor, args.save, args.save_LP, args.kir)
+        skip_computation = True
+
+    if args.boundary_mu0:
+        compute_boundary_mu0(Lambda, args.save)
         skip_computation = True
 
     if not skip_computation:

@@ -1,6 +1,5 @@
 import h5py
 from python_files.data_class import Potential
-from swinging_door import swinging_door
 
 
 def save_final_phase_diagram_to_file(filename, outname):

@@ -30,7 +30,7 @@ def compute_couping(Lambda, N_Flavor):
     kir = 1e-2
     h = 1
     sigma_0 = 1.0
-    sigma_max = 2000.0
+    sigma_max = 4000.0
     delta_sigma = 0.006
 
     dimension = 2

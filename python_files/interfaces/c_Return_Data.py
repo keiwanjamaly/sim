@@ -7,11 +7,19 @@ class Return_Data(Structure):
                 ("samples", c_int),
                 ("grid", POINTER(c_double)),
                 ("solution_y", POINTER(POINTER(c_double))),
-                ("solution_time", POINTER(c_double))]
+                ("solution_time", POINTER(c_double)),
+                ("diffusion", POINTER(POINTER(c_double))),
+                ("source", POINTER(POINTER(c_double)))]
 
 
 class Return_Data_Interface():
     def __init__(self, lib: CDLL, samples: int, grid: POINTER(Grid)) -> None:
+        self.generated_grid = None
+        self.generated_time = None
+        self.generated_solution = None
+        self.generated_source = None
+        self.generated_diffusion = None
+
         self.create_return_data = lib.create_return_data
         self.create_return_data.argtypes = [
             c_int, POINTER(Grid)]
@@ -22,10 +30,6 @@ class Return_Data_Interface():
         self.destroy_return_data = lib.destroy_return_data
         self.destroy_return_data.argtypes = [POINTER(Return_Data)]
         self.destroy_return_data.restype = None
-
-        self.grid_generated = False
-        self.time_generated = False
-        self.solution_generated = False
 
     def __del__(self):
         self.destroy_return_data(self.return_data_pointer)
@@ -44,27 +48,44 @@ class Return_Data_Interface():
 
     @property
     def grid(self):
-        if not self.grid_generated:
+        if self.generated_grid is None:
             self.generated_grid = [
                 self.return_data_pointer.contents.grid[i] for i in range(self.grid_size)]
-            self.grid_generated = True
         return self.generated_grid
 
     @property
     def time(self):
-        if not self.time_generated:
+        if self.generated_time is None:
             self.generated_time = [
                 self.return_data_pointer.contents.solution_time[i] for i in range(self.samples)]
-            self.time_generated = True
         return self.generated_time
 
     @property
     def solution(self):
         def generate_solution(i: int):
             return [self.return_data_pointer.contents.solution_y[i][j] for j in range(self.grid_size)]
-        if not self.solution_generated:
+        if self.generated_solution is None:
             self.generated_solution = [
                 generate_solution(i) for i in range(self.samples)
             ]
-            self.solution_generated
         return self.generated_solution
+
+    @property
+    def source(self):
+        def generate_source(i: int):
+            return [self.return_data_pointer.contents.source[i][j] for j in range(self.grid_size)]
+        if self.generated_source is None:
+            self.generated_source = [
+                generate_source(i) for i in range(self.samples)
+            ]
+        return self.generated_source
+
+    @property
+    def diffusion(self):
+        def generate_diffusion(i: int):
+            return [self.return_data_pointer.contents.diffusion[i][j] for j in range(self.grid_size)]
+        if self.generated_diffusion is None:
+            self.generated_diffusion = [
+                generate_diffusion(i) for i in range(self.samples)
+            ]
+        return self.generated_diffusion

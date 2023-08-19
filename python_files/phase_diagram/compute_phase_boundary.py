@@ -19,7 +19,7 @@ def get_curve_point(t, angle, r_min, r_max, origin):
     return x, y
 
 
-def compute_point(Lambda, N_Flavor, mu, T):
+def compute_point(Lambda, N_Flavor, mu, T, kir):
     if np.isinf(N_Flavor):
         one_over_g2 = get_model(2).calculate_one_g2(
             h=1.0, sigma_0=1.0, Lambda=Lambda)
@@ -28,7 +28,6 @@ def compute_point(Lambda, N_Flavor, mu, T):
         one_over_g2 = get_exact_coupling_from_file(filename)
     dimension = 2
     sigma_max = 2000
-    kir = 1e-2
     delta_sigma = 0.006
     h = 1.0
     sigma_0 = 1.0
@@ -39,17 +38,17 @@ def compute_point(Lambda, N_Flavor, mu, T):
     return sigma, x, result
 
 
-def compute_ray(Lambda, N_Flavor, angle, r_min, r_max, origin):
+def compute_ray(Lambda, N_Flavor, angle, r_min, r_max, origin, kir):
     a = 0
     mu, T = get_curve_point(a, angle, r_min, r_max, origin)
-    f_a, x, result_a = compute_point(Lambda, N_Flavor, mu, T)
+    f_a, x, result_a = compute_point(Lambda, N_Flavor, mu, T, kir)
     b = 1
     mu, T = get_curve_point(b, angle, r_min, r_max, origin)
-    f_b, _, result_b = compute_point(Lambda, N_Flavor, mu, T)
+    f_b, _, result_b = compute_point(Lambda, N_Flavor, mu, T, kir)
     while np.abs(a - b) > 0.0001:
         new = (a + b)/2
         mu, T = get_curve_point(new, angle, r_min, r_max, origin)
-        f_new, x, result_new = compute_point(Lambda, N_Flavor, mu, T)
+        f_new, x, result_new = compute_point(Lambda, N_Flavor, mu, T, kir)
         if f_new <= 0:
             b, f_b, result_b = new, f_new, result_new
         else:
@@ -58,15 +57,12 @@ def compute_ray(Lambda, N_Flavor, angle, r_min, r_max, origin):
     return get_curve_point(b, angle, r_min, r_max, origin), x, result_b
 
 
-def compute_boundary(Lambda, N_Flavor, save: io.TextIOWrapper, save_LP: io.TextIOWrapper):
+def compute_boundary(Lambda, N_Flavor, save: io.TextIOWrapper, save_LP: io.TextIOWrapper, kir):
     angles = np.linspace(0, np.pi/2, 1000)
     # results = []
     job_list = []
     for i, angle in enumerate(angles):
-        # results.append(compute_ray(Lambda, N_Flavor,
-        #                angle, 0.5, 1.2, (0,  0.01)))
-        job_list.append([Lambda, N_Flavor, angle, 0.5, 1.2, (0, 0.01)])
-        # print(f'done - {i}/{len(angles)-1}')
+        job_list.append([Lambda, N_Flavor, angle, 0.5, 1.2, (0, 0.01), kir])
 
     results = Parallel(n_jobs=-1, verbose=20, batch_size=1)(
         delayed(compute_ray)(*x) for x in job_list)
@@ -111,4 +107,45 @@ def compute_boundary(Lambda, N_Flavor, save: io.TextIOWrapper, save_LP: io.TextI
         for mu, T in zip(mus, Ts):
             print(f'{mu}\t{T}', file=save)
 
-    # print(result[0][0], result[0][1])
+
+def compute_boundary_mu0(Lambda, save):
+    angle = np.pi/2
+    # results = []
+    job_list = []
+    N_Flavor_List = list(range(2, 17))
+    for N_Flavor in N_Flavor_List:
+        job_list.append([Lambda, N_Flavor, angle, 0.6, 0.75, (0, 0.00)])
+
+    results = Parallel(n_jobs=-1, verbose=20, batch_size=1)(
+        delayed(compute_ray)(*x) for x in job_list)
+    mus = []
+    Ts = []
+    for result in results:
+        mus.append(result[0][0])
+        Ts.append(result[0][1])
+
+    for mu, T, N_Flavor in zip(mus, Ts, N_Flavor_List):
+        print(N_Flavor, T, sep='\t', file=save)
+
+
+def compute_boundary_reference(Lambda, save):
+    angle = np.pi/2
+    # results = []
+    job_list = []
+    N_Flavor_List = list(range(2, 17))
+    for N_Flavor in N_Flavor_List:
+        # results.append(compute_ray(Lambda, N_Flavor,
+        #                angle, 0.5, 1.2, (0,  0.01)))
+        job_list.append([Lambda, N_Flavor, angle, 0.6, 0.75, (0, 0.00)])
+        # print(f'done - {i}/{len(angles)-1}')
+
+    results = Parallel(n_jobs=-1, verbose=20, batch_size=1)(
+        delayed(compute_ray)(*x) for x in job_list)
+    mus = []
+    Ts = []
+    for result in results:
+        mus.append(result[0][0])
+        Ts.append(result[0][1])
+
+    for mu, T, N_Flavor in zip(mus, Ts, N_Flavor_List):
+        print(N_Flavor, T, sep='\t', file=save)

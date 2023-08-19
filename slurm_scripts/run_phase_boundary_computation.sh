@@ -11,4 +11,5 @@ cd ..
 echo $1
 echo $2
 echo $3
-python3.11 -m python_files.phase_diagram -N $1 -L $2 --boundary --save ${3}/${1}_${2}_phase_boundary.txt --save_LP ${3}/lp/lp_${1}_${2}.txt
+echo $4
+python3.11 -m python_files.phase_diagram -N $1 -L $2 -kir $4 --boundary --save ${3}/${1}_${2}_phase_boundary.txt --save_LP ${3}/lp/lp_${1}_${2}.txt
