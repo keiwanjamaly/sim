@@ -94,23 +94,18 @@ class Potential:
         # polynomial = Polynomial.fit(grid_points, u_points, 2)
         polynomial = Polynomial(result)
         # print(polynomial.roots())
-        if type(polynomial.roots()[-1]) == np.complex128 or polynomial.roots()[-1] >= 1:
+        if type(polynomial.roots()[-1]) == np.complex128 or polynomial.roots()[-1] >= 1 or polynomial.roots()[-1] < 0:
             # polynomial = Polynomial.fit(grid_points[:-1], u_points[:-1], 1)
             A = np.array([[grid_points[0], 1],
                           [grid_points[1], 1]])
             result = np.flip(np.linalg.solve(A, u_points[:-1]))
             polynomial = Polynomial(result)
-        # lower_index, upper_index = lower_index + 1, upper_index + 1
-        # lower_point, upper_point = self.grid[lower_index], self.grid[upper_index]
-        # lower_u, upper_u = self.u[lower_index], self.u[upper_index]
-        #
-        # line = Line.from_points(upper_u, upper_point, lower_u, lower_point)
+        root = polynomial.roots()[-1]
 
-        # print(line.get_root(), polynomial.roots())
-        # print(type(polynomial.roots()[-1]))
-        return polynomial.roots()[-1], polynomial
-
-        # return line.get_root()
+        if root < 0:
+            return 0, polynomial
+        else:
+            return root, polynomial
 
     def __compute_potential(self):
         lower_index, upper_index = self.interval

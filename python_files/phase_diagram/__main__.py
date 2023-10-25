@@ -9,7 +9,9 @@ from python_files.phase_diagram.phase_diagram_computation import phase_diagram_c
 from python_files.phase_diagram.save_phase_diagram import save_final_phase_diagram_to_file
 from python_files.phase_diagram.compute_phase_boundary import compute_boundary
 from python_files.phase_diagram.compute_phase_boundary import compute_boundary_mu0
+from python_files.phase_diagram.compute_phase_boundary import compute_boundary_mu0_kir_dependence
 from python_files.phase_diagram.compute_phase_boundary import compute_boundary_reference
+from python_files.phase_diagram.compute_phase_boundary import compute_T0_line
 import matplotlib.pyplot as plt
 
 
@@ -40,7 +42,11 @@ def main():
     parser.add_argument(
         '--boundary', help='calculate the phase boundary', action='store_true')
     parser.add_argument(
+        '--compute_T0_line', help='compute a T=0 line and plot it', action='store_true')
+    parser.add_argument(
         '--boundary_mu0', help='compute the phase boundary for mu = 0 and multiple flavors', action='store_true')
+    parser.add_argument(
+        '--boundary_mu0_kir', help='compute the phase boundary for mu = 0 and infrared_cutoff_values', action='store_true')
     parser.add_argument(
         '-f', help='filename of the h5py file', type=str)
     args = parser.parse_args()
@@ -72,6 +78,10 @@ def main():
         plots_poster()
         skip_computation = True
 
+    if args.compute_T0_line:
+        compute_T0_line(args.kir)
+        skip_computation = True
+
     if args.compute:
         compute_observables(Lambda, N_Flavor)
         skip_computation = True
@@ -85,7 +95,11 @@ def main():
         skip_computation = True
 
     if args.boundary_mu0:
-        compute_boundary_mu0(Lambda, args.save)
+        compute_boundary_mu0(Lambda, args.save, args.kir)
+        skip_computation = True
+
+    if args.boundary_mu0_kir:
+        compute_boundary_mu0_kir_dependence(Lambda, args.save)
         skip_computation = True
 
     if not skip_computation:

@@ -19,7 +19,7 @@ def save_final_phase_diagram_to_file(filename, outname):
         for mu, T, *arguments in zip(mu_array, T_array, sigma_array, mass_square_array, pressure_array):
             if mu_back != mu:
                 # result = list(swinging_door(tmp, deviation=0.01))
-                result = tmp[::5]
+                result = tmp[:]
                 for T_back, *arguments_back in result:
                     print(mu_back, T_back, *arguments_back,
                           sep='\t', file=outname)
